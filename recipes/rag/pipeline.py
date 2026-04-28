@@ -176,14 +176,24 @@ class RecipeAgent:
             if retrieved:
                 source = "web"
 
-        # Step 4: 3차 — LLM 일반지식 fallback
+        # Step 4: 3차 — LLM 일반지식 fallback (다이어트 모드인 경우만 진행)
         if not retrieved:
-            answer = self._fallback_general_knowledge(question, preferences)
-            return {
-                "answer": answer,
-                "source": "llm",
-                "candidates": [],  # LLM 추정은 저장 후보 없음
-            }
+            is_diet_query = "다이어트" in question or "diet" in question.lower()
+            
+            if is_diet_query:
+                answer = self._fallback_general_knowledge(question, preferences)
+                return {
+                    "answer": answer,
+                    "source": "llm",
+                    "candidates": [],  # LLM 추정은 저장 후보 없음
+                }
+            else:
+                return {
+                    "answer": "죄송합니다. DB와 웹 검색에서 적합한 레시피를 찾지 못했습니다. "
+                              "다른 재료로 검색하시거나 '다이어트 레시피' 버튼을 이용해 보세요! 😊",
+                    "source": "no_result",
+                    "candidates": [],
+                }
 
         # Step 5: 정상 답변 생성
         system_text = build_system_prompt(retrieved, preferences)

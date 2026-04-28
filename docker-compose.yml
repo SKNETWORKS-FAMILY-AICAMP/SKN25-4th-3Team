@@ -1,5 +1,5 @@
 services:
-  # 1. PostgreSQL 데이터베이스 서비스 (Django + Airflow 공용)
+  # 1. PostgreSQL 데이터베이스 서비스
   db:
     image: postgres:15
     container_name: nangteol-db
@@ -27,7 +27,7 @@ services:
     container_name: nangteol-web
     restart: always
     ports:
-      - "8001:8000"
+      - "8000:8000"
     env_file:
       - .env
     depends_on:
@@ -36,7 +36,23 @@ services:
     volumes:
       - .:/app
 
-  # 4. Airflow - DB 초기화 (최초 실행용)
+  # 4. React 프론트엔드 개발 서비스
+  frontend:
+    image: node:20-alpine
+    container_name: nangteol-frontend
+    working_dir: /app
+    volumes:
+      - ./recipes/frontend:/app
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+    command: >
+      sh -c "npm install && npm run build && npm run dev -- --host"
+    depends_on:
+      - web
+
+  # 5. Airflow - DB 초기화 (경로 업데이트)
   airflow-init:
     image: apache/airflow:2.7.2
     container_name: nangteol-airflow-init
@@ -52,7 +68,7 @@ services:
     command: db init
     user: "${AIRFLOW_UID:-50000}:0"
 
-  # 5. Airflow - 웹서버 (대시보드: 8080 포트)
+  # 6. Airflow - 웹서버 (경로 업데이트)
   airflow-webserver:
     image: apache/airflow:2.7.2
     container_name: nangteol-airflow-webserver
@@ -66,14 +82,17 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - PYTHONPATH=/opt/airflow/nangteol
+      - _PIP_ADDITIONAL_DEPENDENCIES=openai pymongo requests beautifulsoup4  # 필요한 패키지 자동 설치
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - .:/opt/airflow/nangteol
     command: webserver
     user: "${AIRFLOW_UID:-50000}:0"
 
-  # 6. Airflow - 스케줄러 (작업 실행 엔진)
+  # 7. Airflow - 스케줄러 (경로 업데이트)
   airflow-scheduler:
     image: apache/airflow:2.7.2
     container_name: nangteol-airflow-scheduler
@@ -85,10 +104,12 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - PYTHONPATH=/opt/airflow/nangteol  # 파이썬 경로 추가
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - .:/opt/airflow/nangteol  # 프로젝트 루트 연결
     command: scheduler
     user: "${AIRFLOW_UID:-50000}:0"
 
