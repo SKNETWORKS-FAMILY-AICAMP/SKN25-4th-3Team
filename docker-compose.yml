@@ -1,0 +1,96 @@
+services:
+  # 1. PostgreSQL 데이터베이스 서비스 (Django + Airflow 공용)
+  db:
+    image: postgres:15
+    container_name: nangteol-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nangteol_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. Redis 인메모리 저장소 서비스
+  redis:
+    image: redis:7-alpine
+    container_name: nangteol-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # 3. Django 웹 애플리케이션 서비스
+  web:
+    build: .
+    container_name: nangteol-web
+    restart: always
+    ports:
+      - "8001:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - .:/app
+
+  # 4. Airflow - DB 초기화 (최초 실행용)
+  airflow-init:
+    image: apache/airflow:2.7.2
+    container_name: nangteol-airflow-init
+    depends_on:
+      - db
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - _AIRFLOW_DB_UPGRADE=true
+      - _AIRFLOW_WWW_USER_CREATE=true
+      - _AIRFLOW_WWW_USER_USERNAME=${_AIRFLOW_WWW_USER_USERNAME:-admin}
+      - _AIRFLOW_WWW_USER_PASSWORD=${_AIRFLOW_WWW_USER_PASSWORD:-admin}
+    command: db init
+    user: "${AIRFLOW_UID:-50000}:0"
+
+  # 5. Airflow - 웹서버 (대시보드: 8080 포트)
+  airflow-webserver:
+    image: apache/airflow:2.7.2
+    container_name: nangteol-airflow-webserver
+    restart: always
+    depends_on:
+      - db
+      - airflow-init
+    ports:
+      - "8080:8080"
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    command: webserver
+    user: "${AIRFLOW_UID:-50000}:0"
+
+  # 6. Airflow - 스케줄러 (작업 실행 엔진)
+  airflow-scheduler:
+    image: apache/airflow:2.7.2
+    container_name: nangteol-airflow-scheduler
+    restart: always
+    depends_on:
+      - db
+      - airflow-init
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    command: scheduler
+    user: "${AIRFLOW_UID:-50000}:0"
+
+volumes:
+  postgres_data:

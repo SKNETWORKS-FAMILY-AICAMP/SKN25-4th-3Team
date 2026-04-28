@@ -1,85 +1,126 @@
-# SKN25-3rd-3Team
+# 냉털봇 — 4차 프로젝트 (Django 이관)
 
-# 1. 팀 소개
-| 이름 | GitHub | 역할 |
-| :--- | :---: | :--- |
-| 권가영 | [@Gayoung03](https://github.com/Gayoung03) | 한 일 적기 |
-| 김연준 | [@kgbrladuswns](https://github.com/kgbrladuswns) | 한 일 적기 |
-| 전운열 | [@cudaboy](https://github.com/cudaboy) | 한 일 적기 |
-| 조은석 | [@silverstone-1004](https://github.com/silverstone-1004) | 한 일 적기 |
-| 최유림 | [@yulim8823](https://github.com/yulim8823) | 한 일 적기 |
-# 2. 프로젝트 기간
-2026.4.6. - 2026.4.7.
+3차 프로젝트(FastAPI + Streamlit)를 Django로 이관하면서 다음 3가지 기능을 추가한 버전입니다.
 
-# 3. 프로젝트 개요
+## ✨ 4차 추가 기능
 
-## 📕 프로젝트명
-"AI 냉털봇: 너의 냉장고를 구해줘"
-(RAG 기반 지능형 식재료 맞춤 레시피 추천 시스템)
+1. **3단 Fallback** — DB 검색 → 웹 검색 → LLM 일반지식 (환각 방지 안내문 강제)
+2. **칼로리 추정** — 추천 레시피마다 1인분 추정 칼로리 표기 (LLM 추정 명시)
+3. **Django 통합** — FastAPI + Streamlit 분리 구조를 단일 Django 앱으로 통합, 세션 기반 채팅 히스토리
 
-## ✅ 프로젝트 배경 및 목적
-• 배경: 6만 건 이상의 방대한 레시피 데이터가 존재하지만, 사용자가 가진 '남은 식재료' 조합에 딱 맞는 요리를 찾기 위해 일일이 검색하고 필터링하는 과정은 여전히 번거롭고 직관적이지 못함.
-
-• 목적: 사용자가 자연어로 냉장고 속 재료를 말하면, 벡터 검색(Vector Search) 기술을 통해 가장 유사도가 높은 레시피를 찾아내고, LLM(대규모 언어 모델)이 이를 맛있게 요약하여 추천하는 개인화된 요리 어시스턴트 구축.
-
-## 🖐️ 프로젝트 소개
+## 📁 프로젝트 구조
 
 ```
-SKN25-3RD-3TEAM/
-├── backend/
-│   ├── db/
-│   │   └── mongo_db.py         # 🔄 (수정) MongoDB 연결 및 컬렉션 반환 모듈
-│   ├── etl/
-│   │   └── embed_recipes.py    # 🆕 (신규) 노트북의 "데이터 1000개씩 임베딩 넣는 반복문"을 스크립트화 한 파일
-│   ├── rag/
-│   │   ├── prompts.py          # 🔄 (수정) 재료 추출 및 레시피 추천용 프롬프트 분리 보관
-│   │   ├── retriever.py        # 🆕 (신규) MongoDB Atlas Vector Search 검색 로직
-│   │   ├── pipeline.py         # 🆕 (신규) 질문 -> 추출 -> 검색 -> 답변생성 (기존 agent_workflow 대체)
-│   │   └── search_engine.py    # ✅ (유지) DB에 레시피가 없을 때를 대비한 네이버 크롤링 웹 검색 도구
-│   ├── api/
-│   │   └── main.py             # ✅ (유지) FastAPI 백엔드 엔드포인트
-│   └── utils/
-│       └── config.py           # 🆕 (신규) .env 로드 및 OpenAI/MongoDB 전역 클라이언트 설정
-├── frontend/
-│   └── recipe_ui.py            # ✅ (유지) Streamlit UI 프론트엔드
-├── .env                        # API 키 및 DB URI (MONGO_URI 필수)
-└── requirements.txt            # 의존성 패키지 (psycopg, chromadb 등은 삭제 가능)
+django_app/
+├── manage.py
+├── nangteol/                 # Django 프로젝트 설정
+│   ├── settings.py           # .env 기반 설정
+│   ├── urls.py               # 루트 URL
+│   ├── wsgi.py / asgi.py
+├── recipes/                  # 메인 앱
+│   ├── apps.py               # 앱 시작 시 RAG 모듈 사전 로딩
+│   ├── views.py              # /, /api/chat/, /api/prefs/, /api/reset/
+│   ├── urls.py
+│   ├── models.py             # (현재 비어있음 — 향후 즐겨찾기용)
+│   ├── rag/                  # 3차에서 이관 + 4차 신규 로직
+│   │   ├── pipeline.py       # 3단 Fallback
+│   │   ├── prompts.py        # 칼로리 출력 양식 + 일반지식 프롬프트
+│   │   ├── retriever.py      # MongoDB Atlas Vector Search
+│   │   └── search_engine.py  # 네이버 블로그 크롤러
+│   ├── db/mongo_db.py        # MongoDB 컬렉션 핸들
+│   ├── utils/config.py       # .env 로드 + OpenAI 클라이언트
+│   ├── templates/recipes/    # 냉장고 UI HTML
+│   └── static/recipes/       # CSS / JS
+├── requirements.txt
+└── README.md
 ```
 
-## ❤️ 기대효과
-• 식재료 낭비 감소: 냉장고에 남은 자투리 재료를 활용할 수 있는 최적의 레시피를 제안하여 음식물 쓰레기 절감에 기여.
+## 🚀 실행 방법
 
-• 결정 장애 해소: "오늘 뭐 먹지?"라는 고민에 대해 데이터 기반의 신뢰도 높은 답변을 즉각적으로 제공.
+### 1. 가상환경 생성 (Python 3.11)
 
-• 정확한 정보 전달: 단순한 텍스트 답변을 넘어 실제 요리 커뮤니티(1만개의 레시피 등)의 원본 링크와 상세 조리 순서를 제공하여 실질적인 요리 수행을 도움.
+```bash
+cd django_app
+python3.11 -m venv .venv
+source .venv/bin/activate           # macOS/Linux
+# .\.venv\Scripts\activate          # Windows
 
-## 👤 대상 사용자
-• 자취생 및 1인 가구: 소량으로 남은 재료 처리가 고민인 사용자.
+pip install -U pip
+pip install -r requirements.txt
+```
 
-• 초보 요리사: 재료 이름만으로 간단하고 명확한 조리법을 찾고 싶은 사용자.
+### 2. `.env` 작성
 
-• 바쁜 직장인: 퇴근 후 냉장고에 있는 재료로 빠르게 메뉴를 결정하고 싶은 사람.
+`django_app/.env` 또는 프로젝트 루트(`SKN25-3rd-3Team 복사본/.env`)에 다음 항목이 있어야 합니다.
 
-• 식단 관리가 필요한 사람: 특정 재료(알레르기 유발 재료 등)를 제외하고 안전한 요리를 찾고 싶은 사용자.
+```env
+OPENAI_API_KEY=sk-...
+MONGO_URI=mongodb+srv://...
+DB_NAME=recipe_project
+COLLECTION_NAME=recipes
+NAVER_CLIENT_ID=...
+NAVER_CLIENT_SECRET=...
 
-# 4. 기술 스택
-- **Language**
-  - ![Python](https://img.shields.io/badge/python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+# Django 전용
+DJANGO_SECRET_KEY=장문의-랜덤-문자열-넣으세요
+DJANGO_DEBUG=True
 
-- **Database**
-  - ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
+# (선택) 벡터 검색 컷오프 외부화 — 데모 시 0.6 정도로 낮추면 fallback 자주 발동
+# RAG_SCORE_THRESHOLD=0.75
+```
 
-- **Pipeline**
-  - ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=linkerd&logoColor=white)
+### 3. 마이그레이션 + 서버 실행
 
-- **API**
-  - ![OpenAI](https://img.shields.io/badge/OpenAI-000000?style=for-the-badge&logo=openai&logoColor=white)
-  - ![Naver](https://img.shields.io/badge/Naver-03C75A?style=for-the-badge&logo=naver&logoColor=white)
- 
-- **Visualization**
-  - ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)
+```bash
+python manage.py migrate           # SQLite (auth, sessions 테이블)
+python manage.py runserver 0.0.0.0:8000
+```
 
+브라우저: http://127.0.0.1:8000/
 
-# 5. 수행결과
+## 🧪 3단 Fallback 동작 확인 시나리오
 
-# 6. 한 줄 회고
+| 시나리오 | 입력 예시 | 예상 source | 답변 표시 |
+|---|---|---|---|
+| 1차: DB 적중 | "감자랑 양파로 뭐 해 먹지?" | `db` | 초록 DB 뱃지 + 칼로리 |
+| 2차: 웹 검색 | (DB에 없는 마이너 재료 조합) | `web` | 노랑 WEB 뱃지 |
+| 3차: LLM 일반지식 | "유자·메추리알로 만드는 디저트" | `llm` | 빨강 "LLM 추정" 뱃지 + ⚠️ 경고문 |
+
+데모 시 `RAG_SCORE_THRESHOLD=0.95`로 환경변수를 올려두면 거의 모든 입력이 fallback 으로 빠져서 시연 편함.
+
+## 🔌 API 엔드포인트
+
+| Method | Path | 용도 |
+|---|---|---|
+| GET | `/` | 냉장고 UI 메인 페이지 |
+| POST | `/api/chat/` | 질문 → 답변(JSON, source 포함) |
+| POST | `/api/prefs/` | 알레르기/난이도/시간/소스 저장 |
+| POST | `/api/reset/` | 채팅 히스토리 초기화 |
+
+`/api/chat/` 요청 예시:
+
+```json
+{
+  "question": "감자랑 양파로 뭐 해 먹지?",
+  "allergies": "없음",
+  "difficulty": "초보",
+  "cooking_time": "20분",
+  "saved_sauces": "진간장, 참기름",
+  "chat_history": []
+}
+```
+
+응답:
+
+```json
+{
+  "answer": "🍳 **감자전**\n- **입력 재료**: ...\n- **추정 칼로리**: 약 320kcal (1인분 기준, LLM 추정)\n...",
+  "source": "db"
+}
+```
+
+## 🗃 3차 프로젝트와의 호환
+
+- `backend/`, `frontend/` 폴더는 그대로 보존 (롤백 가능).
+- MongoDB 컬렉션, 임베딩 스키마는 변경 없음. 3차 프로젝트의 데이터를 그대로 사용.
+- `.env`도 공유. 3차의 `.env`를 루트에 두면 Django 가 자동 로드.
