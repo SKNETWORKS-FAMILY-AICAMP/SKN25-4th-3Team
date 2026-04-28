@@ -51,7 +51,7 @@ def get_sauce_grid_html(saved_sauces):
     return html_out
 
 def render_fridge_ui(messages, is_open, just_opened, allergies, difficulty, cooking_time, saved_sauces):
-    api_chat_url = os.getenv("RECIPE_API_URL", "http://127.0.0.1:8000/chat")
+    api_chat_url = os.getenv("RECIPE_API_URL", "http://127.0.0.1:8000/api/chat/")
     saved_sauces_text = ", ".join(saved_sauces) if saved_sauces else "없음"
     messages_json = json.dumps(messages, ensure_ascii=False).replace("</", "<\\/")
     msgs_html = ""

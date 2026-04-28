@@ -1,6 +1,6 @@
 # 냉털봇 Frontend (React + TypeScript)
 
-기존 Django 템플릿 기반 프론트엔드(`django_app/recipes/templates/`)를 React SPA로 이관한 버전입니다.
+기존 Django 템플릿 기반 프론트엔드(`recipes/templates/`)를 React SPA로 이관한 버전입니다.
 
 ## 스택
 
@@ -23,8 +23,7 @@ npm run dev
 따라서 다른 터미널에서 Django dev 서버를 띄워야 합니다:
 
 ```bash
-cd django_app
-python manage.py runserver
+docker compose up web
 ```
 
 ## 폴더 구조
@@ -35,7 +34,6 @@ frontend/
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts          # /api, /accounts proxy 설정
-├── BACKEND_TODO.md         # SPA 통합을 위해 필요한 Django 측 변경사항
 └── src/
     ├── main.tsx            # ReactDOM.createRoot — Router 마운트
     ├── App.tsx             # 라우트 정의
@@ -68,16 +66,6 @@ frontend/
     └── utils/
         └── csrf.ts
 ```
-
-## 주의사항
-
-이 프론트엔드를 실제로 띄우려면 **Django 측 변경이 선행**되어야 합니다. `BACKEND_TODO.md` 참고.
-
-특히:
-
-- `/api/initial-state/` 엔드포인트 신설
-- `/accounts/login/`, `/accounts/signup/`, `/accounts/logout/` 의 JSON 응답 분기 추가
-- React Router 진입점을 위한 Django catch-all 라우트 (배포 시)
 
 ## 빌드 & 배포
 

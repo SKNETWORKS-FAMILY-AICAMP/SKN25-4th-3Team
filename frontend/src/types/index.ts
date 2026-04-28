@@ -3,14 +3,15 @@
 // Django views.py / models.py 의 직렬화 결과와 1:1 대응됩니다.
 // =============================================================
 
-export type Source = 'db' | 'web' | 'llm';
+export type RecipeSource = 'db' | 'web' | 'llm';
+export type ChatSource = RecipeSource | 'bot' | 'no_ingredient';
 export type Role = 'user' | 'bot';
 
 export interface ChatMessage {
   role: Role;
   text: string;
   /** 봇 메시지일 때만 부여 — 후보 카드 렌더링용 */
-  source?: Source;
+  source?: ChatSource;
   candidates?: RecipeCandidate[];
 }
 
@@ -33,7 +34,7 @@ export interface ChatRequestPayload {
 
 export interface ChatResponse {
   answer: string;
-  source: Source;
+  source: ChatSource;
   candidates: RecipeCandidate[];
 }
 
@@ -49,7 +50,7 @@ export interface Favorite {
   url: string;
   ingredients_summary: string;
   answer_snippet: string;
-  source: Source;
+  source: RecipeSource;
   created_at: string;
 }
 
@@ -63,7 +64,7 @@ export interface FavoriteCreatePayload {
   url?: string;
   ingredients_summary?: string;
   answer_snippet?: string;
-  source: Source;
+  source: RecipeSource;
 }
 
 export interface FavoriteCreateResponse {
@@ -71,9 +72,6 @@ export interface FavoriteCreateResponse {
   favorite: Favorite;
   duplicate?: boolean;
 }
-
-// ----- 인증 -----
-// 현재 Django는 form 기반. SPA 통합 시 JSON 엔드포인트로 확장 필요(BACKEND_TODO.md 참고).
 
 export interface AuthState {
   isAuthenticated: boolean;

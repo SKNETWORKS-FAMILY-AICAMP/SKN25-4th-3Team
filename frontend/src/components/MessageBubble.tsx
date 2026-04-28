@@ -1,10 +1,12 @@
-import type { ChatMessage, RecipeCandidate, Source } from '@/types';
+import type { ChatMessage, RecipeCandidate, ChatSource, RecipeSource } from '@/types';
 import CandidateCard from './CandidateCard';
 
-const SOURCE_LABEL: Record<Source, string> = {
+const SOURCE_LABEL: Record<ChatSource, string> = {
   db: 'DB',
   web: 'WEB',
   llm: 'LLM 추정',
+  bot: 'BOT',
+  no_ingredient: '재료 필요',
 };
 
 interface Props {
@@ -14,6 +16,9 @@ interface Props {
 
 export default function MessageBubble({ message, onRequestToast }: Props) {
   const isUser = message.role === 'user';
+  const recipeSource = isRecipeSource(message.source) ? message.source : null;
+  const candidates = message.candidates ?? [];
+
   if (isUser) {
     return (
       <div className="m u">
@@ -38,16 +43,20 @@ export default function MessageBubble({ message, onRequestToast }: Props) {
           </>
         )}
         {renderMultiline(message.text)}
-        {message.candidates && message.candidates.length > 0 && message.source && (
+        {candidates.length > 0 && recipeSource && (
           <CandidateList
-            candidates={message.candidates}
-            source={message.source}
+            candidates={candidates}
+            source={recipeSource}
             onRequestToast={onRequestToast}
           />
         )}
       </div>
     </div>
   );
+}
+
+function isRecipeSource(source: ChatSource | undefined): source is RecipeSource {
+  return source === 'db' || source === 'web' || source === 'llm';
 }
 
 function renderMultiline(text: string) {
@@ -68,7 +77,7 @@ function CandidateList({
   onRequestToast,
 }: {
   candidates: RecipeCandidate[];
-  source: Source;
+  source: RecipeSource;
   onRequestToast: (msg: string) => void;
 }) {
   return (

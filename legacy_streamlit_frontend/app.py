@@ -8,7 +8,6 @@
 import streamlit as st
 import os
 import sys
-from langchain_core.messages import HumanMessage, AIMessage
 
 # ── 1. 페이지 기본 설정 (반드시 가장 먼저 실행되어야 탭 이름이 바뀝니다!) ──
 st.set_page_config(
@@ -24,8 +23,8 @@ root_dir = os.path.abspath(os.path.join(current_dir, ".."))
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-from frontend.recipe_ui import render_custom_css, render_fridge_ui
-from backend.rag.pipeline import RecipeAgent
+from recipe_ui import render_custom_css, render_fridge_ui
+from recipes.rag.pipeline import RecipeAgent
 
 # ── 3. 세션 상태 초기화 ──
 def initialize_state():
@@ -44,11 +43,10 @@ def initialize_state():
     if "saved_sauces" not in st.session_state: st.session_state.saved_sauces = []
 
 def get_langchain_history():
-    history = []
-    for m in st.session_state.messages[-8:]:
-        msg_obj = HumanMessage(content=m["text"]) if m["role"] == "user" else AIMessage(content=m["text"])
-        history.append(msg_obj)
-    return history
+    return [
+        {"role": m["role"], "text": m["text"]}
+        for m in st.session_state.messages[-8:]
+    ]
 
 # ── 4. 핵심 버그 수정: 무한 루프 방지 및 액션 처리 ──
 def handle_user_actions():
@@ -100,7 +98,12 @@ def process_ai_reply():
                 "cooking_time": st.session_state.cooking_time,
                 "saved_sauces": ", ".join(st.session_state.saved_sauces) if st.session_state.saved_sauces else "없음"
             }
-            bot_reply = st.session_state.agent.run(question=user_q, preferences=prefs, chat_history=get_langchain_history())
+            bot_result = st.session_state.agent.run(
+                question=user_q,
+                preferences=prefs,
+                chat_history=get_langchain_history(),
+            )
+            bot_reply = bot_result.get("answer", bot_result) if isinstance(bot_result, dict) else bot_result
             st.session_state.messages.append({"role": "bot", "text": bot_reply})
             st.rerun()
 

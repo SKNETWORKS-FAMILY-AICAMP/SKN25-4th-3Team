@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { RecipeCandidate, Source } from '@/types';
+import type { RecipeCandidate, RecipeSource } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { createFavorite } from '@/api/favorites';
 import { ApiError } from '@/api/client';
 
 interface Props {
   candidate: RecipeCandidate;
-  source: Source;
+  source: RecipeSource;
   onRequestToast: (msg: string) => void;
 }
 

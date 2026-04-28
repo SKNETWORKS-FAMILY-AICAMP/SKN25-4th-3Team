@@ -244,6 +244,12 @@ from django.shortcuts import redirect
 
 from recipes.models import Favorite
 
+
+def _require_json_login(request):
+    if request.user.is_authenticated:
+        return None
+    return JsonResponse({"error": "로그인이 필요합니다."}, status=401)
+
 @ensure_csrf_cookie
 @require_http_methods(["GET"])
 def initial_state_api(request):
@@ -352,10 +358,13 @@ def favorites_page(request):
 # 즐겨찾기 API
 # ---------------------------------------------------------------------
 @csrf_exempt
-@login_required
 @require_http_methods(["GET", "POST"])
 def favorites_api(request):
     """GET: 내 즐겨찾기 목록 / POST: 새 즐겨찾기 추가."""
+    login_error = _require_json_login(request)
+    if login_error:
+        return login_error
+
     if request.method == "GET":
         favs = Favorite.objects.filter(user=request.user)
         return JsonResponse({"favorites": [f.to_dict() for f in favs]}, json_dumps_params={'ensure_ascii': False})
@@ -397,10 +406,13 @@ def favorites_api(request):
 
 
 @csrf_exempt
-@login_required
 @require_http_methods(["DELETE", "POST"])
 def favorite_delete_api(request, fav_id):
     """즐겨찾기 삭제 (DELETE 또는 POST 모두 허용 - 폼 호환)."""
+    login_error = _require_json_login(request)
+    if login_error:
+        return login_error
+
     fav = Favorite.objects.filter(id=fav_id, user=request.user).first()
     if not fav:
         return JsonResponse({"error": "찾을 수 없습니다."}, status=404, json_dumps_params={'ensure_ascii': False})
