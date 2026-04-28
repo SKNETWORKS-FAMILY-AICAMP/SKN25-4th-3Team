@@ -105,17 +105,30 @@ def chat_api(request):
     chat_history = payload.get("chat_history", []) or []
 
     try:
+        from recipes.rag.diet_curator import DietRecipeCurator
+        curator = DietRecipeCurator()
+
+        # 1. 다이어트 의도 분석 및 라우팅
         if question == "💪 다이어트 레시피":
-            from recipes.rag.diet_curator import DietRecipeCurator
-            curator = DietRecipeCurator()
-            result = curator.get_automatic_diet_recipe()
+            # 버튼 클릭 시: 자동 큐레이션
+            result = curator.get_diet_recipe()
         else:
-            agent = _get_agent()
-            result = agent.run(
-                question=question,
-                preferences=preferences,
-                chat_history=chat_history,
-            )
+            # 일반 채팅 시: LLM으로 의도 분석
+            intent = curator.analyze_diet_intent(question)
+            if intent.get("is_diet_intent"):
+                # 다이어트 의도가 감지되면 네이버 검색 기반 큐레이터 호출
+                result = curator.get_diet_recipe(
+                    user_question=question,
+                    ingredients=intent.get("ingredients", "")
+                )
+            else:
+                # 일반 질문은 기존 RAG 에이전트(DB 우선) 사용
+                agent = _get_agent()
+                result = agent.run(
+                    question=question,
+                    preferences=preferences,
+                    chat_history=chat_history,
+                )
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
