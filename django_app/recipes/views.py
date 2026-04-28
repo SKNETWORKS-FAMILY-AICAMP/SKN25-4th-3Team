@@ -105,12 +105,17 @@ def chat_api(request):
     chat_history = payload.get("chat_history", []) or []
 
     try:
-        agent = _get_agent()
-        result = agent.run(
-            question=question,
-            preferences=preferences,
-            chat_history=chat_history,
-        )
+        if question == "💪 다이어트 레시피":
+            from recipes.rag.diet_curator import DietRecipeCurator
+            curator = DietRecipeCurator()
+            result = curator.get_automatic_diet_recipe()
+        else:
+            agent = _get_agent()
+            result = agent.run(
+                question=question,
+                preferences=preferences,
+                chat_history=chat_history,
+            )
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
