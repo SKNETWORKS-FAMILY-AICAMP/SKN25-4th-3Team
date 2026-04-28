@@ -121,8 +121,8 @@ def chat_api(request):
             result = curator.get_diet_recipe()
         
         # 2. 제철 재료 레시피 멀티턴 로직
-        elif question == "📅 제철 재료 레시피" or seasonal_state:
-            if question == "📅 제철 재료 레시피":
+        elif question in ["🌱 제철 재료 레시피", "📅 제철 재료 레시피"] or seasonal_state:
+            if question in ["🌱 제철 재료 레시피", "📅 제철 재료 레시피"]:
                 # 처음 버튼 클릭 시
                 request.session["seasonal_state"] = "AWAITING_MONTH"
                 result = {"answer": "몇 월의 제철 재료를 알려드릴까요? (예: 4월)", "source": "bot"}
@@ -241,12 +241,54 @@ from django.shortcuts import redirect
 from recipes.models import Favorite
 
 
-def signup_view(request):
-    """아이디 + 비밀번호만 받는 회원가입."""
+
+@ensure_csrf_cookie
+@require_http_methods(["GET"])
+def initial_state_api(request):
+    """SPA 초기 구동 시 필요한 모든 데이터를 JSON으로 반환."""
+    _ensure_session(request.session)
+    fav_ids = []
     if request.user.is_authenticated:
+        from recipes.models import Favorite
+        fav_ids = list(
+            Favorite.objects.filter(user=request.user)
+            .exclude(mongo_recipe_id="")
+            .values_list("mongo_recipe_id", flat=True)
+        )
+    return JsonResponse({
+        "auth": {
+            "isAuthenticated": request.user.is_authenticated,
+            "username": request.user.username if request.user.is_authenticated else "",
+        },
+        "messages": request.session.get("messages", []),
+        "preferences": {
+            "allergies": request.session.get("allergies", "없음"),
+            "difficulty": request.session.get("difficulty", "초보"),
+            "cooking_time": request.session.get("cooking_time", "20분"),
+            "saved_sauces": request.session.get("saved_sauces", []),
+        },
+        "favorite_mongo_ids": fav_ids,
+    })
+
+
+@csrf_exempt
+def signup_view(request):
+    """아이디 + 비밀번호 회원가입. JSON 요청 대응."""
+    if request.user.is_authenticated:
+        if request.content_type == "application/json":
+            return JsonResponse({"ok": True})
         return redirect("recipes:index")
 
     if request.method == "POST":
+        if request.content_type == "application/json":
+            payload = json.loads(request.body)
+            form = UserCreationForm(data=payload)
+            if form.is_valid():
+                user = form.save()
+                login(request, user)
+                return JsonResponse({"ok": True, "user": {"isAuthenticated": True, "username": user.username}})
+            return JsonResponse({"ok": False, "error": form.errors.get_json_data()}, status=400)
+        
         form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
@@ -257,12 +299,24 @@ def signup_view(request):
     return render(request, "registration/signup.html", {"form": form})
 
 
+@csrf_exempt
 def login_view(request):
-    """로그인 페이지."""
+    """로그인 페이지. JSON 요청 대응."""
     if request.user.is_authenticated:
+        if request.content_type == "application/json":
+            return JsonResponse({"ok": True, "user": {"isAuthenticated": True, "username": request.user.username}})
         return redirect("recipes:index")
 
     if request.method == "POST":
+        if request.content_type == "application/json":
+            payload = json.loads(request.body)
+            form = AuthenticationForm(request, data=payload)
+            if form.is_valid():
+                user = form.get_user()
+                login(request, user)
+                return JsonResponse({"ok": True, "user": {"isAuthenticated": True, "username": user.username}})
+            return JsonResponse({"ok": False, "error": "아이디 또는 비밀번호가 틀렸습니다."}, status=400)
+
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
@@ -273,8 +327,11 @@ def login_view(request):
     return render(request, "registration/login.html", {"form": form})
 
 
+@csrf_exempt
 def logout_view(request):
     logout(request)
+    if request.content_type == "application/json":
+        return JsonResponse({"ok": True})
     return redirect("recipes:index")
 
 
