@@ -13,7 +13,7 @@ import json
 
 from django.http import JsonResponse
 from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
 # RecipeAgent 싱글톤 — 첫 요청 시에 한 번만 초기화
@@ -239,8 +239,6 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.shortcuts import redirect
 
 from recipes.models import Favorite
-
-
 
 @ensure_csrf_cookie
 @require_http_methods(["GET"])
