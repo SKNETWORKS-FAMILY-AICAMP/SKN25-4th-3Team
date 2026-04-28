@@ -106,23 +106,59 @@ def chat_api(request):
 
     try:
         from recipes.rag.diet_curator import DietRecipeCurator
+        from recipes.rag.seasonal_curator import SeasonalRecipeCurator
+        
         curator = DietRecipeCurator()
+        seasonal_curator = SeasonalRecipeCurator()
+
+        # 0. 세션에서 현재 대화 상태 확인
+        _ensure_session(request.session)
+        seasonal_state = request.session.get("seasonal_state")
 
         # 1. 다이어트 의도 분석 및 라우팅
         if question == "💪 다이어트 레시피":
-            # 버튼 클릭 시: 자동 큐레이션
+            request.session["seasonal_state"] = None  # 다른 상태 초기화
             result = curator.get_diet_recipe()
+        
+        # 2. 제철 재료 레시피 멀티턴 로직
+        elif question == "📅 제철 재료 레시피" or seasonal_state:
+            if question == "📅 제철 재료 레시피":
+                # 처음 버튼 클릭 시
+                request.session["seasonal_state"] = "AWAITING_MONTH"
+                result = {"answer": "몇 월의 제철 재료를 알려드릴까요? (예: 4월)", "source": "bot"}
+            
+            elif seasonal_state == "AWAITING_MONTH":
+                # 월 입력 대기 중
+                foods = seasonal_curator.get_ingredients_by_month(question)
+                if foods:
+                    request.session["seasonal_state"] = "AWAITING_FOOD"
+                    request.session["current_seasonal_foods"] = foods
+                    foods_str = ", ".join(foods)
+                    result = {
+                        "answer": f"그 달의 제철 재료는 **{foods_str}** 입니다. \n어떤 재료를 이용한 레시피를 찾고 싶으신가요?",
+                        "source": "bot"
+                    }
+                else:
+                    result = {"answer": "죄송합니다. 월 정보를 정확히 이해하지 못했어요. '4월'과 같이 다시 입력해 주세요.", "source": "bot"}
+            
+            elif seasonal_state == "AWAITING_FOOD":
+                # 특정 재료 입력 대기 중
+                result = seasonal_curator.get_recipe_by_seasonal_food(question)
+                request.session["seasonal_state"] = None  # 대화 종료 후 상태 초기화
+            
+            else:
+                request.session["seasonal_state"] = None
+                result = {"answer": "대화 흐름이 끊겼습니다. 다시 버튼을 눌러주세요.", "source": "bot"}
+
         else:
-            # 일반 채팅 시: LLM으로 의도 분석
+            # 3. 일반 채팅 시: LLM으로 의도 분석
             intent = curator.analyze_diet_intent(question)
             if intent.get("is_diet_intent"):
-                # 다이어트 의도가 감지되면 네이버 검색 기반 큐레이터 호출
                 result = curator.get_diet_recipe(
                     user_question=question,
                     ingredients=intent.get("ingredients", "")
                 )
             else:
-                # 일반 질문은 기존 RAG 에이전트(DB 우선) 사용
                 agent = _get_agent()
                 result = agent.run(
                     question=question,
