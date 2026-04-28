@@ -1,12 +1,11 @@
 // =============================================================
-// 메인 페이지 — 냉장고 + 챗봇 + 취향 + 소스 패널 + 토스트.
+// 메인 페이지 — 냉장고 + 챗봇 + 소스 패널 + 토스트.
 // 기존 fridge.js (357줄)의 동작을 React state로 1:1 이식.
 // =============================================================
 import { useEffect, useState } from 'react';
 import Fridge from '@/components/Fridge';
 import Chat from '@/components/Chat';
 import FAQButtons from '@/components/FAQButtons';
-import PreferencePanel from '@/components/PreferencePanel';
 import SaucePanel from '@/components/SaucePanel';
 import Toast from '@/components/Toast';
 import { useAuth } from '@/context/AuthContext';
@@ -36,12 +35,6 @@ export default function FridgePage() {
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setToastToken((t) => t + 1);
-  };
-
-  // 취향 변경 시 즉시 컨텍스트 동기화 (DB는 소스 저장 시 한 번에 보냄)
-  const handlePrefChange = (next: Preferences) => {
-    setLocalPrefs(next);
-    persistCtxPrefs(next);
   };
 
   const sendQuestion = async (question: string) => {
@@ -151,24 +144,12 @@ export default function FridgePage() {
               onSend={sendQuestion}
               onRequestToast={showToast}
               bottomSlot={
-                <>
-                  <FAQButtons onPick={sendQuestion} disabled={isSending} />
-                  <PreferencePanel preferences={preferences} onChange={handlePrefChange} />
-                  <button
-                    type="button"
-                    className="action-btn"
-                    onClick={() => setSauceOpen(true)}
-                  >
-                    🧴 소스 및 양념 저장하기
-                  </button>
-                  <button
-                    type="button"
-                    className="action-btn ghost"
-                    onClick={handleReset}
-                  >
-                    🧹 대화 비우기
-                  </button>
-                </>
+                <FAQButtons
+                  onPick={sendQuestion}
+                  onSaveSauce={() => setSauceOpen(true)}
+                  onResetChat={handleReset}
+                  disabled={isSending}
+                />
               }
             />
           }

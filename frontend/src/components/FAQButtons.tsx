@@ -1,29 +1,50 @@
 interface Props {
   onPick: (question: string) => void;
+  onSaveSauce: () => void;
+  onResetChat: () => void;
   disabled?: boolean;
 }
 
-const FAQS = [
-  '🥕 재료로 레시피 찾기',
-  '📅 오늘 뭐 먹지?',
-  '🔥 재료 소진 플랜',
-  '💪 다이어트 레시피',
-];
+export default function FAQButtons({
+  onPick,
+  onSaveSauce,
+  onResetChat,
+  disabled,
+}: Props) {
+  const buttons: Array<{ label: string; onClick: () => void; disabled?: boolean }> = [
+    {
+      label: '🌱 제철 재료 레시피',
+      onClick: () => onPick('🌱 제철 재료 레시피'),
+      disabled,
+    },
+    {
+      label: '💪 다이어트 레시피',
+      onClick: () => onPick('💪 다이어트 레시피'),
+      disabled,
+    },
+    {
+      label: '🧴 소스 및 양념 저장하기',
+      onClick: onSaveSauce,
+    },
+    {
+      label: '🧹 대화 비우기',
+      onClick: onResetChat,
+    },
+  ];
 
-export default function FAQButtons({ onPick, disabled }: Props) {
   return (
     <>
       <div className="faq-lbl">✨ 자주 찾는 기능</div>
       <div className="faq-grid">
-        {FAQS.map((q) => (
+        {buttons.map((b) => (
           <button
-            key={q}
+            key={b.label}
             type="button"
             className="faq-btn"
-            onClick={() => onPick(q)}
-            disabled={disabled}
+            onClick={b.onClick}
+            disabled={b.disabled}
           >
-            {q}
+            {b.label}
           </button>
         ))}
       </div>
