@@ -13,7 +13,7 @@ import json
 
 from django.http import JsonResponse
 from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
 # RecipeAgent 싱글톤 — 첫 요청 시에 한 번만 초기화
@@ -106,17 +106,54 @@ def chat_api(request):
 
     try:
         from recipes.rag.diet_curator import DietRecipeCurator
+        from recipes.rag.seasonal_curator import SeasonalRecipeCurator
+        
         curator = DietRecipeCurator()
+        seasonal_curator = SeasonalRecipeCurator()
+
+        # 0. 세션에서 현재 대화 상태 확인
+        _ensure_session(request.session)
+        seasonal_state = request.session.get("seasonal_state")
 
         # 1. 다이어트 의도 분석 및 라우팅
         if question == "💪 다이어트 레시피":
-            # 버튼 클릭 시: 자동 큐레이션
+            request.session["seasonal_state"] = None  # 다른 상태 초기화
             result = curator.get_diet_recipe()
+        
+        # 2. 제철 재료 레시피 멀티턴 로직
+        elif question in ["🌱 제철 재료 레시피", "📅 제철 재료 레시피"] or seasonal_state:
+            if question in ["🌱 제철 재료 레시피", "📅 제철 재료 레시피"]:
+                # 처음 버튼 클릭 시
+                request.session["seasonal_state"] = "AWAITING_MONTH"
+                result = {"answer": "몇 월의 제철 재료를 알려드릴까요? (예: 4월)", "source": "bot"}
+            
+            elif seasonal_state == "AWAITING_MONTH":
+                # 월 입력 대기 중
+                foods = seasonal_curator.get_ingredients_by_month(question)
+                if foods:
+                    request.session["seasonal_state"] = "AWAITING_FOOD"
+                    request.session["current_seasonal_foods"] = foods
+                    foods_str = ", ".join(foods)
+                    result = {
+                        "answer": f"그 달의 제철 재료는 **{foods_str}** 입니다. \n어떤 재료를 이용한 레시피를 찾고 싶으신가요?",
+                        "source": "bot"
+                    }
+                else:
+                    result = {"answer": "죄송합니다. 월 정보를 정확히 이해하지 못했어요. '4월'과 같이 다시 입력해 주세요.", "source": "bot"}
+            
+            elif seasonal_state == "AWAITING_FOOD":
+                # 특정 재료 입력 대기 중
+                result = seasonal_curator.get_recipe_by_seasonal_food(question)
+                request.session["seasonal_state"] = None  # 대화 종료 후 상태 초기화
+            
+            else:
+                request.session["seasonal_state"] = None
+                result = {"answer": "대화 흐름이 끊겼습니다. 다시 버튼을 눌러주세요.", "source": "bot"}
+
         else:
-            # 일반 채팅 시: LLM으로 의도 분석
+            # 3. 일반 채팅 시: LLM으로 의도 분석
             intent = curator.analyze_diet_intent(question)
             if intent.get("is_diet_intent"):
-                # 다이어트 의도가 감지되면 네이버 검색 기반 큐레이터 호출
                 result = curator.get_diet_recipe(
                     user_question=question,
                     ingredients=intent.get("ingredients", "")
@@ -131,6 +168,7 @@ def chat_api(request):
                 )
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500, json_dumps_params={'ensure_ascii': False})
+
 
     # 세션에 사용자 + 봇 메시지 저장 (페이지 새로고침해도 유지)
     _ensure_session(request.session)
@@ -206,13 +244,53 @@ from django.shortcuts import redirect
 
 from recipes.models import Favorite
 
-
-def signup_view(request):
-    """아이디 + 비밀번호만 받는 회원가입."""
+@ensure_csrf_cookie
+@require_http_methods(["GET"])
+def initial_state_api(request):
+    """SPA 초기 구동 시 필요한 모든 데이터를 JSON으로 반환."""
+    _ensure_session(request.session)
+    fav_ids = []
     if request.user.is_authenticated:
+        from recipes.models import Favorite
+        fav_ids = list(
+            Favorite.objects.filter(user=request.user)
+            .exclude(mongo_recipe_id="")
+            .values_list("mongo_recipe_id", flat=True)
+        )
+    return JsonResponse({
+        "auth": {
+            "isAuthenticated": request.user.is_authenticated,
+            "username": request.user.username if request.user.is_authenticated else "",
+        },
+        "messages": request.session.get("messages", []),
+        "preferences": {
+            "allergies": request.session.get("allergies", "없음"),
+            "difficulty": request.session.get("difficulty", "초보"),
+            "cooking_time": request.session.get("cooking_time", "20분"),
+            "saved_sauces": request.session.get("saved_sauces", []),
+        },
+        "favorite_mongo_ids": fav_ids,
+    })
+
+
+@csrf_exempt
+def signup_view(request):
+    """아이디 + 비밀번호 회원가입. JSON 요청 대응."""
+    if request.user.is_authenticated:
+        if request.content_type == "application/json":
+            return JsonResponse({"ok": True})
         return redirect("recipes:index")
 
     if request.method == "POST":
+        if request.content_type == "application/json":
+            payload = json.loads(request.body)
+            form = UserCreationForm(data=payload)
+            if form.is_valid():
+                user = form.save()
+                login(request, user)
+                return JsonResponse({"ok": True, "user": {"isAuthenticated": True, "username": user.username}})
+            return JsonResponse({"ok": False, "error": form.errors.get_json_data()}, status=400)
+        
         form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
@@ -223,12 +301,24 @@ def signup_view(request):
     return render(request, "registration/signup.html", {"form": form})
 
 
+@csrf_exempt
 def login_view(request):
-    """로그인 페이지."""
+    """로그인 페이지. JSON 요청 대응."""
     if request.user.is_authenticated:
+        if request.content_type == "application/json":
+            return JsonResponse({"ok": True, "user": {"isAuthenticated": True, "username": request.user.username}})
         return redirect("recipes:index")
 
     if request.method == "POST":
+        if request.content_type == "application/json":
+            payload = json.loads(request.body)
+            form = AuthenticationForm(request, data=payload)
+            if form.is_valid():
+                user = form.get_user()
+                login(request, user)
+                return JsonResponse({"ok": True, "user": {"isAuthenticated": True, "username": user.username}})
+            return JsonResponse({"ok": False, "error": "아이디 또는 비밀번호가 틀렸습니다."}, status=400)
+
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
@@ -239,8 +329,11 @@ def login_view(request):
     return render(request, "registration/login.html", {"form": form})
 
 
+@csrf_exempt
 def logout_view(request):
     logout(request)
+    if request.content_type == "application/json":
+        return JsonResponse({"ok": True})
     return redirect("recipes:index")
 
 

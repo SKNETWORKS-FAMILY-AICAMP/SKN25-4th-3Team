@@ -15,6 +15,7 @@ urlpatterns = [
     path("accounts/signup/", views.signup_view, name="signup"),
     # 챗 API
     path("api/chat/", views.chat_api, name="chat_api"),
+    path("api/initial-state/", views.initial_state_api, name="initial_state_api"),
     path("api/prefs/", views.prefs_api, name="prefs_api"),
     path("api/reset/", views.reset_api, name="reset_api"),
     # 즐겨찾기 API
