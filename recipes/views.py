@@ -9,13 +9,15 @@ from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 
+from recipes.rag.pipeline import RecipeAgent
+from recipes.models import ChatMessage, Profile, Favorite
+
 # RecipeAgent 싱글톤
 _agent = None
 
 def _get_agent():
     global _agent
     if _agent is None:
-        from recipes.rag.pipeline import RecipeAgent
         _agent = RecipeAgent()
     return _agent
 
@@ -60,12 +62,51 @@ def chat_api(request):
 
 @require_http_methods(["GET"])
 def initial_state_api(request):
-    """SPA 초기 로딩 시 인증 상태 등을 반환"""
-    return JsonResponse({
-        "auth": {
-            "isAuthenticated": request.user.is_authenticated,
-            "username": request.user.username if request.user.is_authenticated else None,
+    """SPA 초기 로딩 시 인증 상태, 취향, 메시지 내역 등을 반환"""
+    user = request.user
+    
+    # 기본값 설정
+    auth = {
+        "isAuthenticated": user.is_authenticated,
+        "username": user.username if user.is_authenticated else None,
+    }
+    
+    preferences = {
+        "allergies": "없음",
+        "difficulty": "초보",
+        "cooking_time": "20분",
+        "saved_sauces": [],
+    }
+    
+    messages = []
+    favorite_mongo_ids = []
+    
+    if user.is_authenticated:
+        # 프로필에서 취향 로드
+        profile, _ = Profile.objects.get_or_create(user=user)
+        preferences = {
+            "allergies": profile.allergies or "없음",
+            "difficulty": profile.difficulty or "초보",
+            "cooking_time": profile.cooking_time or "20분",
+            "saved_sauces": profile.get_sauces_list(),
         }
+        
+        # 채팅 내역 (최근 20개)
+        chat_qs = ChatMessage.objects.filter(user=user).order_by('created_at')[:20]
+        for msg in chat_qs:
+            messages.append({
+                "role": msg.role,
+                "text": msg.text,
+            })
+            
+        # 즐겨찾기 ID 목록
+        favorite_mongo_ids = list(Favorite.objects.filter(user=user).values_list('mongo_recipe_id', flat=True))
+
+    return JsonResponse({
+        "auth": auth,
+        "messages": messages,
+        "preferences": preferences,
+        "favorite_mongo_ids": favorite_mongo_ids,
     })
 
 @csrf_exempt

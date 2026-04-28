@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "recipes.apps.RecipesConfig",
+    "recipes.apps.RecipeAppConfig",
 ]
 
 MIDDLEWARE = [
@@ -119,6 +119,7 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / "recipes" / "static",
+    BASE_DIR / "recipes" / "static" / "recipes" / "dist",
 ]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

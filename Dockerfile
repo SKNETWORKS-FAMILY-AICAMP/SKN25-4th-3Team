@@ -25,4 +25,4 @@ COPY . .
 # RUN python manage.py collectstatic --noinput
 
 # Gunicorn을 사용하여 서버 실행 (포트 8000)
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "nangteol.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "nangteol.wsgi:application"]

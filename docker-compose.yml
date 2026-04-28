@@ -35,6 +35,7 @@ services:
       - redis
     volumes:
       - .:/app
+      - frontend_build:/app/recipes/static/recipes/dist
 
   # 4. React 프론트엔드 개발 서비스
   frontend:
@@ -43,6 +44,8 @@ services:
     working_dir: /app
     volumes:
       - ./recipes/frontend:/app
+      - /app/node_modules
+      - frontend_build:/static/recipes/dist
     ports:
       - "5173:5173"
     environment:
@@ -82,13 +85,14 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - PYTHONPATH=/opt/airflow/nangteol
+      - PYTHONPATH=/opt/airflow/nangteol:/opt/airflow/recipes
       - _PIP_ADDITIONAL_DEPENDENCIES=openai pymongo requests beautifulsoup4  # 필요한 패키지 자동 설치
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
       - .:/opt/airflow/nangteol
+      - ./recipes:/opt/airflow/recipes
     command: webserver
     user: "${AIRFLOW_UID:-50000}:0"
 
@@ -104,14 +108,16 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - PYTHONPATH=/opt/airflow/nangteol  # 파이썬 경로 추가
+      - PYTHONPATH=/opt/airflow/nangteol:/opt/airflow/recipes  # 파이썬 경로 추가
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
       - .:/opt/airflow/nangteol  # 프로젝트 루트 연결
+      - ./recipes:/opt/airflow/recipes
     command: scheduler
     user: "${AIRFLOW_UID:-50000}:0"
 
 volumes:
   postgres_data:
+  frontend_build:

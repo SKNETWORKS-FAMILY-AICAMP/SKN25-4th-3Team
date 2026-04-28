@@ -15,6 +15,11 @@ class Profile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile"
     )
+    # 취향 정보
+    allergies = models.CharField(max_length=255, blank=True, default="없음")
+    difficulty = models.CharField(max_length=20, blank=True, default="초보")
+    cooking_time = models.CharField(max_length=20, blank=True, default="20분")
+
     # JSON 형식의 문자열 또는 콤마로 구분된 문자열로 저장
     saved_sauces = models.TextField(
         blank=True, default="[]", help_text="사용자가 보유한 양념 리스트 (JSON)"
@@ -23,6 +28,13 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user.username}의 프로필"
+
+    def get_sauces_list(self):
+        import json
+        try:
+            return json.loads(self.saved_sauces)
+        except:
+            return []
 
 
 class ChatMessage(models.Model):
