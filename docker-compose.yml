@@ -37,23 +37,23 @@ services:
       - .:/app
       - frontend_build:/app/recipes/static/recipes/dist
 
-  # 4. React 프론트엔드 개발 서비스
-  frontend:
-    image: node:20-alpine
-    container_name: nangteol-frontend
-    working_dir: /app
-    volumes:
-      - ./recipes/frontend:/app
-      - /app/node_modules
-      - frontend_build:/static/recipes/dist
-    ports:
-      - "5173:5173"
-    environment:
-      - NODE_ENV=development
-    command: >
-      sh -c "npm install && npm run build && npm run dev -- --host"
-    depends_on:
-      - web
+  # 4. React 프론트엔드 개발 서비스 (8000번 통합 서버 사용 시 불필요)
+  # frontend:
+  #   image: node:20-alpine
+  #   container_name: nangteol-frontend
+  #   working_dir: /app
+  #   volumes:
+  #     - ./recipes/frontend:/app
+  #     - /app/node_modules
+  #     - frontend_build:/static/recipes/dist
+  #   ports:
+  #     - "5173:5173"
+  #   environment:
+  #     - NODE_ENV=development
+  #   command: >
+  #     sh -c "npm install && npm run build && npm run dev -- --host"
+  #   depends_on:
+  #     - web
 
   # 5. Airflow - DB 초기화 (경로 업데이트)
   airflow-init:

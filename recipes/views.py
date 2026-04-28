@@ -50,12 +50,27 @@ def chat_api(request):
     try:
         payload = json.loads(request.body.decode("utf-8"))
         question = payload.get("question", "").strip()
-        history = payload.get("history", [])
-        preferences = payload.get("preferences", {})
+        history = payload.get("chat_history", [])  # chat_history로 수정
         
+        # 평면적인 필드들을 preferences 객체로 묶어줌
+        preferences = {
+            "allergies": payload.get("allergies", "없음"),
+            "difficulty": payload.get("difficulty", "초보"),
+            "cooking_time": payload.get("cooking_time", "20분"),
+            "saved_sauces": payload.get("saved_sauces", ""),
+        }
+        
+        # 1. 사용자 질문 저장
+        if request.user.is_authenticated:
+            ChatMessage.objects.create(user=request.user, role='user', text=question)
+            
         # RAG 파이프라인 실행
         result = agent.run(question=question, preferences=preferences, chat_history=history)
         
+        # 2. AI 답변 저장
+        if request.user.is_authenticated:
+            ChatMessage.objects.create(user=request.user, role='bot', text=result.get("answer", ""))
+            
         return JsonResponse(result, json_dumps_params={'ensure_ascii': False})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
@@ -115,7 +130,7 @@ def signup_view(request):
     try:
         data = json.loads(request.body)
         username = data.get('username')
-        password = data.get('password')
+        password = data.get('password1') or data.get('password') # password1 대응
         if User.objects.filter(username=username).exists():
             return JsonResponse({"error": "이미 존재하는 아이디입니다."}, status=400)
         user = User.objects.create_user(username=username, password=password)
@@ -144,9 +159,92 @@ def logout_view(request):
     logout(request)
     return JsonResponse({"ok": True})
 
-# 즐겨찾기 등 기타 API는 필요에 따라 추가 구현
-def favorites_page(request): return index(request)
-def favorites_api(request): return JsonResponse({"favorites": []})
-def favorite_delete_api(request, fav_id): return JsonResponse({"ok": True})
-def prefs_api(request): return JsonResponse({"ok": True})
-def reset_api(request): return JsonResponse({"ok": True})
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def favorites_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "로그인이 필요합니다."}, status=401)
+    
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            mongo_id = data.get('mongo_recipe_id')
+            title = data.get('title')
+            url = data.get('url', "")
+            ingredients = data.get('ingredients_summary', "")
+            snippet = data.get('answer_snippet', "")
+            source = data.get('source', "db")
+            
+            if not title:
+                return JsonResponse({"error": "제목이 없습니다."}, status=400)
+            
+            # mongo_id가 없는 경우(웹 검색 등)를 위해 처리
+            fav, created = Favorite.objects.get_or_create(
+                user=request.user,
+                mongo_recipe_id=mongo_id or "",
+                defaults={
+                    "title": title,
+                    "url": url,
+                    "ingredients_summary": ingredients,
+                    "answer_snippet": snippet,
+                    "source": source
+                }
+            )
+            
+            if not created:
+                return JsonResponse({"ok": True, "message": "이미 저장된 레시피입니다."})
+            
+            return JsonResponse({"ok": True})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    
+    # GET: 목록 반환
+    favs = Favorite.objects.filter(user=request.user)
+    return JsonResponse({
+        "favorites": [f.to_dict() for f in favs]
+    })
+
+@csrf_exempt
+@require_http_methods(["DELETE", "POST"])
+def favorite_delete_api(request, fav_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "로그인이 필요합니다."}, status=401)
+    
+    try:
+        fav = Favorite.objects.get(user=request.user, id=fav_id)
+        fav.delete()
+        return JsonResponse({"ok": True})
+    except Favorite.DoesNotExist:
+        return JsonResponse({"error": "항목을 찾을 수 없습니다."}, status=404)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+@csrf_exempt
+@require_http_methods(["POST"])
+def prefs_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "로그인이 필요합니다."}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        
+        profile.allergies = data.get('allergies', "없음")
+        profile.difficulty = data.get('difficulty', "초보")
+        profile.cooking_time = data.get('cooking_time', "20분")
+        profile.saved_sauces = json.dumps(data.get('saved_sauces', []), ensure_ascii=False)
+        profile.save()
+        
+        return JsonResponse({"ok": True})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def reset_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "로그인이 필요합니다."}, status=401)
+    
+    ChatMessage.objects.filter(user=request.user).delete()
+    return JsonResponse({"ok": True})

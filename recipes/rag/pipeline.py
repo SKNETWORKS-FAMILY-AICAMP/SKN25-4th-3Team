@@ -158,7 +158,11 @@ class RecipeAgent:
     ) -> dict:
         # Step 1: 재료 추출
         ingredient_keywords = self._extract_ingredients(question)
-        if "없음" in ingredient_keywords:
+        
+        # '제철'이나 '다이어트' 키워드가 포함된 경우, 구체적 재료가 없어도 진행 허용
+        is_special_intent = "제철" in question or "다이어트" in question or "diet" in question.lower()
+        
+        if "없음" in ingredient_keywords and not is_special_intent:
             return {
                 "answer": "식재료를 포함해서 다시 질문해 주세요! "
                           "(예: 감자랑 양파로 뭐 해 먹지?)",

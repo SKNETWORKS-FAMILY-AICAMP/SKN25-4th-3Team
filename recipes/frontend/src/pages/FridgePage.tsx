@@ -17,6 +17,7 @@ export default function FridgePage() {
 
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [preferences, setLocalPrefs] = useState<Preferences>(initialPrefs);
+  const [draft, setDraft] = useState(''); // 입력창 상태 추가
   const [isSending, setIsSending] = useState(false);
   const [fridgeOpen, setFridgeOpen] = useState(false);
   const [sauceOpen, setSauceOpen] = useState(false);
@@ -38,9 +39,26 @@ export default function FridgePage() {
   };
 
   const sendQuestion = async (question: string) => {
-    if (isSending || !question) return;
+    let finalQuestion = question;
+    const trimmedDraft = draft.trim();
 
-    setMessages((prev) => [...prev, { role: 'user', text: question }]);
+    if (trimmedDraft) {
+      // 1. 입력창에 글자가 있는 경우: 버튼 텍스트와 합침 (중복 방지)
+      finalQuestion = question.includes(trimmedDraft) ? question : `${trimmedDraft} ${question}`;
+    } else {
+      // 2. 입력창이 비어있는 경우: 버튼별 특수 알고리즘 적용
+      if (question.includes('제철')) {
+        const month = new Date().getMonth() + 1;
+        finalQuestion = `${month}월 제철 재료 레시피 추천해줘`;
+      } else if (question.includes('다이어트')) {
+        finalQuestion = `다이어트 레시피 추천해줘`;
+      }
+    }
+
+    if (isSending || !finalQuestion) return;
+
+    setMessages((prev) => [...prev, { role: 'user', text: finalQuestion }]);
+    setDraft(''); // 전송 후 입력창 비우기
 
     // 로딩 메시지를 추가 후 응답 도착 시 교체
     const LOADING_TEXT = '🍳 레시피를 찾고 있어요...';
@@ -55,7 +73,7 @@ export default function FridgePage() {
 
     try {
       const data = await postChat({
-        question,
+        question: combinedQuestion,
         allergies: preferences.allergies || '없음',
         difficulty: preferences.difficulty || '초보',
         cooking_time: preferences.cooking_time || '20분',
@@ -141,6 +159,8 @@ export default function FridgePage() {
             <Chat
               messages={messages}
               isSending={isSending}
+              draft={draft}
+              setDraft={setDraft}
               onSend={sendQuestion}
               onRequestToast={showToast}
               bottomSlot={

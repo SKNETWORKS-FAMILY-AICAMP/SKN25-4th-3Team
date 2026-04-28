@@ -5,6 +5,8 @@ import MessageBubble from './MessageBubble';
 interface Props {
   messages: ChatMessage[];
   isSending: boolean;
+  draft: string;
+  setDraft: (v: string) => void;
   onSend: (text: string) => void;
   onRequestToast: (msg: string) => void;
   /** 채팅창 위에 자주쓰기/취향/액션 버튼을 끼워넣는 슬롯 */
@@ -14,11 +16,12 @@ interface Props {
 export default function Chat({
   messages,
   isSending,
+  draft,
+  setDraft,
   onSend,
   onRequestToast,
   bottomSlot,
 }: Props) {
-  const [draft, setDraft] = useState('');
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // 새 메시지 도착 시 스크롤을 맨 아래로
