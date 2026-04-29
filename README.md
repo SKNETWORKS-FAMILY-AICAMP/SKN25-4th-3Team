@@ -184,10 +184,10 @@ EC2
 `.env`에 운영 값을 설정합니다.
 
 ```env
-DJANGO_DEBUG=False
-DJANGO_SECRET_KEY=change-me
-DJANGO_ALLOWED_HOSTS=your-ec2-public-host,localhost,127.0.0.1
-DJANGO_CSRF_TRUSTED_ORIGINS=http://your-ec2-public-host
+DEBUG=False
+SECRET_KEY=change-me
+ALLOWED_HOSTS=your-ec2-public-host,localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=http://your-ec2-public-host
 EC2_PUBLIC_HOST=your-ec2-public-host
 POSTGRES_DB=nangteol_db
 POSTGRES_USER=postgres

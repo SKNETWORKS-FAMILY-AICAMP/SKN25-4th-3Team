@@ -13,6 +13,10 @@ load_dotenv(BASE_DIR / ".env")
 load_dotenv(BASE_DIR.parent / ".env")  # 3차 프로젝트 .env도 호환
 
 
+def _env_bool(name: str, default: str) -> bool:
+    return os.getenv(name, default).lower() in {"1", "true", "yes", "on"}
+
+
 def _env_list(name: str, default: str) -> list[str]:
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
@@ -20,20 +24,20 @@ def _env_list(name: str, default: str) -> list[str]:
 # 1. 보안 / 디버그
 # ---------------------------------------------------------------------
 SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
+    "SECRET_KEY",
     "django-insecure-CHANGE-ME-IN-PRODUCTION-please-use-env",
 )
 
-DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
+DEBUG = _env_bool("DEBUG", "True")
 
-ALLOWED_HOSTS = _env_list("DJANGO_ALLOWED_HOSTS", "*")
+ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", "*")
 
 CSRF_TRUSTED_ORIGINS = _env_list(
-    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    "CSRF_TRUSTED_ORIGINS",
     "http://localhost,http://127.0.0.1,http://localhost:8000,http://127.0.0.1:8000,http://localhost:5173,http://127.0.0.1:5173",
 )
 
-EC2_PUBLIC_HOST = os.getenv("EC2_PUBLIC_HOST")
+EC2_PUBLIC_HOST = os.getenv("EC2_PUBLIC_HOST", "")
 if EC2_PUBLIC_HOST:
     for scheme in ("http", "https"):
         origin = f"{scheme}://{EC2_PUBLIC_HOST}"
