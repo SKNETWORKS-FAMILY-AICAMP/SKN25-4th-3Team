@@ -1,12 +1,15 @@
 from datetime import datetime, timedelta
 import logging
+import os
 import requests
 import re
 from bs4 import BeautifulSoup
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from recipes.utils.config import MONGO_URI, DB_NAME
-from pymongo import MongoClient
+
+MONGO_URI = os.getenv("MONGO_URI")
+DB_NAME = os.getenv("DB_NAME", "recipe_project")
+COLLECTION_NAME = os.getenv("COLLECTION_NAME", "recipes")
 
 # ── 설정 및 헤더 ──────────────────────────────────────────────────────────────
 HEADERS = {
@@ -18,9 +21,14 @@ LIST_URL = "https://www.10000recipe.com/recipe/list.html"
 # ── 크롤링 보조 함수들 ─────────────────────────────────────────────────────────
 
 def get_mongo_collection():
+    from pymongo import MongoClient
+
+    if not MONGO_URI:
+        raise RuntimeError("MONGO_URI가 설정되지 않았습니다.")
+
     client = MongoClient(MONGO_URI)
     db = client[DB_NAME]
-    return db["recipes"]
+    return db[COLLECTION_NAME]
 
 def clean_text(text: str) -> str:
     """불필요한 공백 및 '구매' 텍스트 제거"""
