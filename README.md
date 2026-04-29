@@ -6,7 +6,7 @@
 | 권가영 | [@Gayoung03](https://github.com/Gayoung03) | Django-React 통합 아키텍처 설계 및 RAG Fallback 고도화 |
 | 김연준 | [@kgbrladuswns](https://github.com/kgbrladuswns) | PostgreSQL 스키마 정규화 및 Airflow 데이터 파이프라인 구축 |
 | 전운열 | [@cudaboy](https://github.com/cudaboy) | LangChain RAG 파이프라인 고도화 및 시스템 프롬프트 최적화 |
-| 조은석 | [@silverstone-1004](https://github.com/silverstone-1004) | Docker 인프라 오케스트레이션 및 데이터 동기화 자동화 |
+| 조은석 | [@silverstone-1004](https://github.com/silverstone-1004) | 요구 산출물 서류 작업 |
 | 최유림 | [@yulim8823](https://github.com/yulim8823) | React(Vite) 기반 SPA UI 구현 및 만개의 레시피 크롤러 개발 |
 
 # 2. 프로젝트 기간
