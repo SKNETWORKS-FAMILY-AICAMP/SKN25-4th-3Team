@@ -111,33 +111,52 @@ graph TD
 
 # 5. 프로젝트 디렉토리 구조
 ```text
-├── airflow/                        # Airflow 시스템 관리 폴더
-│   ├── dags/                       # 자동화 파이프라인 (DAG) 정의
-│   │   └── recipe_weekly_sync.py   # 주간 레시피 자동 동기화 스크립트
-│   └── logs/                       # 워커(Worker) 및 스케줄러 실행 로그
-├── nangteol/                       # Django 프로젝트 핵심 설정 폴더
-│   ├── settings.py                 # DB 연결, 앱 등록 등 전체 환경 설정
-│   ├── urls.py                     # 루트 URL 라우팅 (Admin, App 연결)
-│   ├── wsgi.py                     # WSGI 서버 진입점 (배포용)
-│   └── asgi.py                     # ASGI 서버 진입점 (비동기 처리용)
-├── recipes/                        # 메인 서비스 어플리케이션 로직
-│   ├── frontend/                   # React + Vite SPA 소스 및 빌드 환경
-│   ├── rag/                        # RAG 파이프라인 핵심 모듈
-│   │   ├── pipeline.py             # 3단 Fallback 오케스트레이션 로직
-│   │   ├── diet_curator.py         # 다이어트 특화 큐레이션 엔진
-│   │   ├── seasonal_curator.py     # 제철 식재료 데이터 기반 검색기
-│   │   └── prompts.py              # LLM 시스템 프롬프트 관리
-│   ├── migrations/                 # DB 스키마 변경 이력 (PostgreSQL)
-│   ├── static/                     # 정적 파일 (CSS, JS, Images, React Build)
-│   ├── templates/                  # Django HTML 템플릿 파일
-│   ├── utils/                      # 공통 유틸리티 (Config, Helper)
-│   ├── admin.py                    # 관리자 페이지 모델 등록 및 설정
-│   ├── apps.py                     # 앱 설정 및 초기화 로직 (RecipeAgent 로딩)
-│   ├── models.py                   # PostgreSQL 데이터 모델 정의 (Profile, Favorite)
-│   ├── urls.py                     # 앱 내부 URL 라우팅 설정
-│   └── views.py                    # REST API 엔드포인트 및 컨트롤러
-├── docker-compose.yml              # 전체 서비스(DB, Redis, Web, Airflow) 컨테이너 설정
-└── .env                            # API Key, DB URI 등 민감 정보 환경 변수 관리
+.
+├── airflow/                     # Airflow 데이터 파이프라인 (자동화)
+│   ├── dags/                    # 스케줄링된 작업 정의
+│   │   └── recipe_weekly_sync.py # 주간 레시피 데이터 동기화 DAG
+│   └── logs/                    # 작업 실행 로그
+├── nangteol/                    # Django 프로젝트 메인 설정
+│   ├── settings.py              # 전체 환경 설정 (DB, App 등록 등)
+│   ├── urls.py                  # 프로젝트 전체 라우팅
+│   ├── asgi.py / wsgi.py        # 서버 게이트웨이 설정
+│   └── __init__.py
+├── recipes/                     # 핵심 서비스 애플리케이션 (냉털 레시피)
+│   ├── rag/                     # RAG 기반 AI 큐레이터 모듈
+│   │   ├── pipeline.py          # 검색 및 추천 프로세스 오케스트레이션
+│   │   ├── diet_curator.py      # 맞춤형 식단 추천 로직
+│   │   ├── seasonal_curator.py  # 제철 식재료 기반 추천 로직
+│   │   ├── search_engine.py     # 검색 엔진 인터페이스
+│   │   ├── retriever.py         # 데이터 추출 엔진
+│   │   ├── prompts.py           # LLM용 프롬프트 관리
+│   │   └── seasonal_data.json   # 제철 식재료 기반 데이터
+│   ├── frontend/                # React 프런트엔드 (Vite 기반)
+│   │   ├── src/                 # 프런트엔드 소스 코드
+│   │   │   ├── api/             # 백엔드 API 통신 로직
+│   │   │   ├── components/      # 공통 UI 컴포넌트
+│   │   │   ├── pages/           # 주요 페이지 (Fridge, Chat 등)
+│   │   │   ├── context/         # 전역 상태 관리
+│   │   │   └── styles/          # CSS 및 스타일 파일
+│   │   ├── vite.config.ts       # Vite 빌드 설정
+│   │   └── package.json         # 프런트엔드 라이브러리 의존성
+│   ├── db/                      # 데이터베이스 관리
+│   │   └── mongo_db.py          # MongoDB 연결 및 쿼리 로직
+│   ├── templates/               # Django 서버 사이드 템플릿 (로그인, 기본 UI 등)
+│   ├── static/                  # 정적 파일 (CSS, JS, Images)
+│   ├── migrations/              # DB 스키마 변경 이력
+│   ├── models.py                # 데이터베이스 테이블 정의
+│   ├── views.py                 # API 및 뷰 로직 처리
+│   ├── urls.py                  # 레시피 앱 전용 라우팅
+│   └── apps.py                  # 앱 구성 설정
+├── nginx/                       # Nginx 웹 서버 설정
+│   └── default.conf             # 프록시 및 서버 환경 설정
+├── docker-compose.yml           # 전체 서비스 컨테이너 설정 (Multi-Container)
+├── Dockerfile                   # Django 어플리케이션 이미지 생성 설정
+├── manage.py                    # Django 관리 도구
+├── requirements.txt             # Python 패키지 설치 목록
+├── README.md                    # 프로젝트 가이드라인 및 설명서
+└── SKN25_3rd_project_3team.pdf  # 프로젝트 관련 기술 문서/발표 자료
+
 ```
 
 # 6. 기술 스택
