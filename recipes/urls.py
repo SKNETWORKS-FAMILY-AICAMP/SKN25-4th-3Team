@@ -12,10 +12,9 @@ urlpatterns = [
     path("api/favorites/", views.favorites_api, name="favorites_api"),
     path("api/favorites/<int:fav_id>/", views.favorite_delete_api, name="favorite_delete_api"),
     
-    # Auth API
-    path("accounts/login/", views.login_view, name="login_api"),
-    path("accounts/signup/", views.signup_view, name="signup_api"),
-    path("accounts/logout/", views.logout_view, name="logout_api"),
+    path("api/auth/login/", views.login_view, name="login_api"),
+    path("api/auth/signup/", views.signup_view, name="signup_api"),
+    path("api/auth/logout/", views.logout_view, name="logout_api"),
 
     # SPA Routes (나머지 모든 경로는 React index.html로 전송)
     re_path(r'^.*$', views.index, name="index"),

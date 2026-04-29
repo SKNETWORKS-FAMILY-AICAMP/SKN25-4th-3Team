@@ -162,3 +162,50 @@ graph TD
 
 # 8. 수행 결과 (v2.0)
 *(여기에 4차 프로젝트 작동 스크린샷이나 시연 영상을 삽입하세요)*
+
+# 9. EC2 Docker Compose 배포
+이 프로젝트는 EC2에서 Nginx를 단일 외부 진입점으로 사용하도록 구성되어 있습니다.
+
+## 서비스 구조
+```text
+EC2
+└── Docker Compose
+    ├── nginx              외부 진입점, 80번 포트
+    ├── frontend           React 빌드 후 frontend_dist 볼륨에 복사
+    ├── web                Django + Gunicorn
+    ├── db                 PostgreSQL
+    ├── redis              Redis
+    ├── airflow-init       Airflow DB/User 초기화
+    ├── airflow-webserver  Airflow UI (/airflow)
+    └── airflow-scheduler  Airflow Scheduler
+```
+
+## 필수 환경변수
+`.env`에 운영 값을 설정합니다.
+
+```env
+DJANGO_DEBUG=False
+DJANGO_SECRET_KEY=change-me
+DJANGO_ALLOWED_HOSTS=your-ec2-public-host,localhost,127.0.0.1
+DJANGO_CSRF_TRUSTED_ORIGINS=http://your-ec2-public-host
+EC2_PUBLIC_HOST=your-ec2-public-host
+POSTGRES_DB=nangteol_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=change-me
+AIRFLOW_UID=1000
+_AIRFLOW_WWW_USER_USERNAME=admin
+_AIRFLOW_WWW_USER_PASSWORD=change-me
+```
+
+`OPENAI_API_KEY`, `MONGO_URI`, `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` 등 애플리케이션 API 키도 같은 `.env`에서 주입됩니다.
+
+## 실행
+```bash
+docker compose up -d --build
+```
+
+배포 후 접속 경로는 다음과 같습니다.
+
+- React 앱: `http://<EC2_PUBLIC_HOST>/`
+- Django Admin: `http://<EC2_PUBLIC_HOST>/admin/`
+- Airflow: `http://<EC2_PUBLIC_HOST>/airflow/`

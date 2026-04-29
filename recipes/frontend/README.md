@@ -18,7 +18,7 @@ npm install
 npm run dev
 ```
 
-기본적으로 `http://localhost:5173` 에서 동작하며, `/api/*` 와 `/accounts/*` 요청은 `vite.config.ts` 의 proxy 설정에 의해 `http://localhost:8000`(Django dev 서버)로 전달됩니다.
+기본적으로 `http://localhost:5173` 에서 동작하며, `/api/*` 요청은 `vite.config.ts` 의 proxy 설정에 의해 `http://localhost:8000`(Django dev 서버)로 전달됩니다.
 
 따라서 다른 터미널에서 Django dev 서버를 띄워야 합니다:
 
@@ -33,7 +33,7 @@ frontend/
 ├── index.html              # 진입점
 ├── package.json
 ├── tsconfig.json
-├── vite.config.ts          # /api, /accounts proxy 설정
+├── vite.config.ts          # /api proxy 설정
 └── src/
     ├── main.tsx            # ReactDOM.createRoot — Router 마운트
     ├── App.tsx             # 라우트 정의

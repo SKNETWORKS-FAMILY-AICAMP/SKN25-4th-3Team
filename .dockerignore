@@ -1,0 +1,14 @@
+.git
+.idea
+.venv
+SKN25-4th-VENV
+__pycache__
+*.py[cod]
+.DS_Store
+.env
+airflow/logs
+media
+staticfiles
+recipes/frontend/node_modules
+recipes/frontend/dist
+recipes/frontend/tsconfig.tsbuildinfo

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/static/',
+  base: '/',
   plugins: [react()],
   resolve: {
     alias: {
@@ -13,16 +13,16 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: true, 
+    host: true,
     proxy: {
       '/api': {
-        target: 'http://web:8000',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },
   },
   build: {
-    outDir: '../static/recipes/dist',
+    outDir: 'dist',
     emptyOutDir: true,
   },
 });

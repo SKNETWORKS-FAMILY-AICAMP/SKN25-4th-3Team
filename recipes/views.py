@@ -30,11 +30,15 @@ def index(request):
     React SPA의 진입점입니다. 
     빌드된 index.html을 서빙하여 리액트 앱이 화면을 제어하게 합니다.
     """
-    dist_index = os.path.join(settings.BASE_DIR, 'recipes', 'static', 'recipes', 'dist', 'index.html')
-    
-    if os.path.exists(dist_index):
-        with open(dist_index, 'r', encoding='utf-8') as f:
-            return HttpResponse(f.read())
+    index_candidates = [
+        os.path.join(settings.BASE_DIR, 'recipes', 'frontend', 'dist', 'index.html'),
+        os.path.join(settings.BASE_DIR, 'recipes', 'static', 'recipes', 'dist', 'index.html'),
+    ]
+
+    for dist_index in index_candidates:
+        if os.path.exists(dist_index):
+            with open(dist_index, 'r', encoding='utf-8') as f:
+                return HttpResponse(f.read())
     
     # 빌드 파일이 없을 경우 안내 메시지
     return HttpResponse("React 빌드 파일(index.html)을 찾을 수 없습니다. npm run build를 실행해주세요.", status=404)
@@ -75,6 +79,7 @@ def chat_api(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
+@ensure_csrf_cookie
 @require_http_methods(["GET"])
 def initial_state_api(request):
     """SPA 초기 로딩 시 인증 상태, 취향, 메시지 내역 등을 반환"""

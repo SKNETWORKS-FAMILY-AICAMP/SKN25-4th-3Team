@@ -12,6 +12,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 load_dotenv(BASE_DIR.parent / ".env")  # 3차 프로젝트 .env도 호환
 
+
+def _env_list(name: str, default: str) -> list[str]:
+    return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
+
 # ---------------------------------------------------------------------
 # 1. 보안 / 디버그
 # ---------------------------------------------------------------------
@@ -22,12 +26,22 @@ SECRET_KEY = os.getenv(
 
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
 
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "*").split(",")
+ALLOWED_HOSTS = _env_list("DJANGO_ALLOWED_HOSTS", "*")
 
-CSRF_TRUSTED_ORIGINS = os.getenv(
+CSRF_TRUSTED_ORIGINS = _env_list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
-    "http://localhost:8000,http://127.0.0.1:8000,http://localhost:5173,http://127.0.0.1:5173",
-).split(",")
+    "http://localhost,http://127.0.0.1,http://localhost:8000,http://127.0.0.1:8000,http://localhost:5173,http://127.0.0.1:5173",
+)
+
+EC2_PUBLIC_HOST = os.getenv("EC2_PUBLIC_HOST")
+if EC2_PUBLIC_HOST:
+    for scheme in ("http", "https"):
+        origin = f"{scheme}://{EC2_PUBLIC_HOST}"
+        if origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(origin)
+
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # ---------------------------------------------------------------------
 # 2. 설치된 앱
@@ -115,12 +129,8 @@ USE_TZ = True
 # ---------------------------------------------------------------------
 # 5. 정적 파일
 # ---------------------------------------------------------------------
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [
-    BASE_DIR / "recipes" / "static",
-    BASE_DIR / "recipes" / "static" / "recipes" / "dist",
-]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

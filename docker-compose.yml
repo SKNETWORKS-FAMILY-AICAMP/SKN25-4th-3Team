@@ -1,5 +1,30 @@
 services:
-  # 1. PostgreSQL 데이터베이스 서비스
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nangteol-nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - frontend_dist:/usr/share/nginx/html
+      - ./staticfiles:/app/staticfiles
+    depends_on:
+      frontend:
+        condition: service_completed_successfully
+      web:
+        condition: service_started
+      airflow-webserver:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./recipes/frontend
+    container_name: nangteol-frontend
+    restart: "no"
+    volumes:
+      - frontend_dist:/shared-dist
+
   db:
     image: postgres:15
     container_name: nangteol-db
@@ -8,85 +33,111 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-nangteol_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-    ports:
-      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # 2. Redis 인메모리 저장소 서비스
   redis:
     image: redis:7-alpine
     container_name: nangteol-redis
     restart: always
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # 3. Django 웹 애플리케이션 서비스
   web:
     build: .
     container_name: nangteol-web
     restart: always
-    ports:
-      - "8000:8000"
     env_file:
       - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: nangteol.settings
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/1
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8000"
     volumes:
       - .:/app
-      - frontend_build:/app/recipes/static/recipes/dist
+      - ./staticfiles:/app/staticfiles
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn nangteol.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120 --access-logfile -"
 
-  # 4. React 프론트엔드 개발 서비스 (8000번 통합 서버 사용 시 불필요)
-  # frontend:
-  #   image: node:20-alpine
-  #   container_name: nangteol-frontend
-  #   working_dir: /app
-  #   volumes:
-  #     - ./recipes/frontend:/app
-  #     - /app/node_modules
-  #     - frontend_build:/static/recipes/dist
-  #   ports:
-  #     - "5173:5173"
-  #   environment:
-  #     - NODE_ENV=development
-  #   command: >
-  #     sh -c "npm install && npm run build && npm run dev -- --host"
-  #   depends_on:
-  #     - web
-
-  # 5. Airflow - DB 초기화 (경로 업데이트)
   airflow-init:
     image: apache/airflow:2.7.2
     container_name: nangteol-airflow-init
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
     environment:
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - _AIRFLOW_DB_UPGRADE=true
-      - _AIRFLOW_WWW_USER_CREATE=true
-      - _AIRFLOW_WWW_USER_USERNAME=${_AIRFLOW_WWW_USER_USERNAME:-admin}
-      - _AIRFLOW_WWW_USER_PASSWORD=${_AIRFLOW_WWW_USER_PASSWORD:-admin}
-    command: db init
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__WEBSERVER__BASE_URL: http://${EC2_PUBLIC_HOST:-localhost}/airflow
+      AIRFLOW__WEBSERVER__WEB_SERVER_URL_PREFIX: /airflow
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-admin}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-admin}
+      _PIP_ADDITIONAL_DEPENDENCIES: openai pymongo requests beautifulsoup4 python-dotenv
+      PYTHONPATH: /opt/airflow/nangteol:/opt/airflow/recipes
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - .:/opt/airflow/nangteol
+      - ./recipes:/opt/airflow/recipes
+    command: >
+      bash -c "airflow db migrate && (
+               airflow users create
+               --username $${_AIRFLOW_WWW_USER_USERNAME}
+               --password $${_AIRFLOW_WWW_USER_PASSWORD}
+               --firstname Admin
+               --lastname User
+               --role Admin
+               --email admin@example.com || true
+              )"
     user: "${AIRFLOW_UID:-50000}:0"
 
-  # 6. Airflow - 웹서버 (경로 업데이트)
   airflow-webserver:
     image: apache/airflow:2.7.2
     container_name: nangteol-airflow-webserver
     restart: always
     depends_on:
-      - db
-      - airflow-init
-    ports:
-      - "8080:8080"
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    expose:
+      - "8080"
+    env_file:
+      - .env
     environment:
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - PYTHONPATH=/opt/airflow/nangteol:/opt/airflow/recipes
-      - _PIP_ADDITIONAL_DEPENDENCIES=openai pymongo requests beautifulsoup4  # 필요한 패키지 자동 설치
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__WEBSERVER__BASE_URL: http://${EC2_PUBLIC_HOST:-localhost}/airflow
+      AIRFLOW__WEBSERVER__WEB_SERVER_URL_PREFIX: /airflow
+      PYTHONPATH: /opt/airflow/nangteol:/opt/airflow/recipes
+      _PIP_ADDITIONAL_DEPENDENCIES: openai pymongo requests beautifulsoup4 python-dotenv
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
@@ -96,28 +147,34 @@ services:
     command: webserver
     user: "${AIRFLOW_UID:-50000}:0"
 
-  # 7. Airflow - 스케줄러 (경로 업데이트)
   airflow-scheduler:
     image: apache/airflow:2.7.2
     container_name: nangteol-airflow-scheduler
     restart: always
     depends_on:
-      - db
-      - airflow-init
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    env_file:
+      - .env
     environment:
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - PYTHONPATH=/opt/airflow/nangteol:/opt/airflow/recipes  # 파이썬 경로 추가
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-nangteol_db}
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__WEBSERVER__BASE_URL: http://${EC2_PUBLIC_HOST:-localhost}/airflow
+      AIRFLOW__WEBSERVER__WEB_SERVER_URL_PREFIX: /airflow
+      PYTHONPATH: /opt/airflow/nangteol:/opt/airflow/recipes
+      _PIP_ADDITIONAL_DEPENDENCIES: openai pymongo requests beautifulsoup4 python-dotenv
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
-      - .:/opt/airflow/nangteol  # 프로젝트 루트 연결
+      - .:/opt/airflow/nangteol
       - ./recipes:/opt/airflow/recipes
     command: scheduler
     user: "${AIRFLOW_UID:-50000}:0"
 
 volumes:
   postgres_data:
-  frontend_build:
+  frontend_dist:

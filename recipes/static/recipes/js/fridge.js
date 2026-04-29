@@ -128,7 +128,7 @@
         e.stopPropagation();
         if (!auth.isAuthenticated) {
           if (confirm('레시피 저장은 로그인 후 이용할 수 있어요. 로그인하시겠어요?')) {
-            location.href = '/accounts/login/';
+            location.href = '/accounts/login';
           }
           return;
         }
@@ -157,7 +157,7 @@
           });
           if (res.status === 403 || res.status === 302) {
             alert('로그인이 필요합니다.');
-            location.href = '/accounts/login/';
+            location.href = '/accounts/login';
             return;
           }
           const j = await res.json();

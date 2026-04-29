@@ -8,23 +8,40 @@ import os
 from langchain_community.vectorstores import MongoDBAtlasVectorSearch
 from langchain_openai import OpenAIEmbeddings
 
-from recipes.db.mongo_db import recipe_collection
-from recipes.utils.config import OPENAI_API_KEY
+from recipes.db.mongo_db import get_db_collection
 
-# 임베딩 + 벡터스토어 초기화
-embeddings = OpenAIEmbeddings(
-    openai_api_key=OPENAI_API_KEY,
-    model="text-embedding-3-small",
-    dimensions=256,  # DB 인덱스 차원과 동일 필수
-)
+_embeddings = None
+_vector_store = None
 
-vector_store = MongoDBAtlasVectorSearch(
-    collection=recipe_collection,
-    embedding=embeddings,
-    index_name="vector_index",
-    text_key="ingredients_text",
-    embedding_key="ingredients_embedding",
-)
+
+def _get_embeddings():
+    global _embeddings
+
+    if _embeddings is None:
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        if not openai_api_key:
+            raise ValueError("OPENAI_API_KEY가 설정되지 않았습니다.")
+
+        _embeddings = OpenAIEmbeddings(
+            openai_api_key=openai_api_key,
+            model="text-embedding-3-small",
+            dimensions=256,  # DB 인덱스 차원과 동일 필수
+        )
+    return _embeddings
+
+
+def _get_vector_store():
+    global _vector_store
+
+    if _vector_store is None:
+        _vector_store = MongoDBAtlasVectorSearch(
+            collection=get_db_collection(),
+            embedding=_get_embeddings(),
+            index_name="vector_index",
+            text_key="ingredients_text",
+            embedding_key="ingredients_embedding",
+        )
+    return _vector_store
 
 DEFAULT_SCORE_THRESHOLD = float(os.getenv("RAG_SCORE_THRESHOLD", "0.75"))
 
@@ -39,6 +56,9 @@ def search_similar_recipes(
         return []
 
     try:
+        recipe_collection = get_db_collection()
+        vector_store = _get_vector_store()
+
         total_docs = recipe_collection.count_documents({})
         embedded_docs = recipe_collection.count_documents(
             {"ingredients_embedding": {"$exists": True}}
