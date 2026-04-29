@@ -171,7 +171,6 @@ class RecipeAgent:
         if chat_history:
             last_bot_msg = next((m for m in reversed(chat_history) if m.get("role") == "bot"), {})
             bot_text = last_bot_msg.get("text", "")
-            # 재료 리스트를 보여줬거나, 월을 물어본 경우 모두 제철 컨텍스트로 간주
             if "제철 식재료는" in bot_text or "몇 월의 제철 재료가" in bot_text:
                 is_seasonal_context = True
 
@@ -180,7 +179,6 @@ class RecipeAgent:
 
         if "제철" in question or is_seasonal_context:
             print("📅 [Pipeline] 제철 모드 진입.")
-            # 1. 월별 재료 리스트 요청인 경우 (예: "4월 제철 재료 추천해줘")
             seasonal_foods = self.seasonal_curator.get_ingredients_by_month(question)
             if seasonal_foods:
                 foods_str = ", ".join(seasonal_foods)
@@ -190,7 +188,6 @@ class RecipeAgent:
                     "candidates": []
                 }
             
-            # 1-1. '제철' 키워드는 있으나 구체적인 월 정보가 없는 경우 (추가된 로직)
             if "제철" in question and not seasonal_foods:
                 return {
                     "answer": "📅 몇 월의 제철 재료가 궁금하신가요? 숫자로 입력해 주세요! (예: 5월)",
@@ -198,32 +195,29 @@ class RecipeAgent:
                     "candidates": []
                 }
             
-            # 2. 특정 제철 재료 레시피 요청인 경우 (예: "달래 레시피 알려줘" 또는 리스트 확인 후 "달래")
             if ingredient_keywords and "없음" not in ingredient_keywords:
                 first_ing = ingredient_keywords.split(",")[0].strip()
-                # 제철 맥락이거나 질문에 '제철'이 포함된 경우 제철 큐레이터 사용
                 return self.seasonal_curator.get_recipe_by_seasonal_food(first_ing)
 
         # -----------------------------------------------------------------
-        # Step 1-2: [특수 모드 2] 다이어트 레시피 처리 (의도 분석 및 네이버 API 우선 사용)
+        # Step 1-2: [특수 모드 2] 다이어트 레시피 처리 (의도 감지 시 즉시 네이버 연동)
         # -----------------------------------------------------------------
         diet_analysis = self.diet_curator.analyze_diet_intent(question)
-        if diet_analysis.get("is_diet_intent") or "다이어트" in question or "diet" in question.lower():
-            print(f"🥗 [Pipeline] 다이어트 의도 감지 ({diet_analysis.get('reason', '키워드 매칭')}) - Naver API 검색 가동")
-            
-            # 분석에서 추출된 재료가 있으면 우선 사용, 없으면 기존 추출 결과 사용
-            diet_ingredients = diet_analysis.get("ingredients") or ("" if "없음" in ingredient_keywords else ingredient_keywords)
+        if diet_analysis.get("is_diet_intent") or "다이어트" in question:
+            print(f"🥗 [Pipeline] 다이어트 의도 감지 ({diet_analysis.get('reason', '키워드')}) - Naver API 즉시 가동")
+            diet_ingredients = diet_analysis.get("ingredients") or ingredient_keywords
             return self.diet_curator.get_diet_recipe(question, diet_ingredients)
 
+        # -----------------------------------------------------------------
+        # Step 2: [기본 모드] 일반 질문은 벡터 DB 검색 우선
+        # -----------------------------------------------------------------
         if "없음" in ingredient_keywords and not is_special_intent:
             return {
-                "answer": "식재료를 포함해서 다시 질문해 주세요! "
-                          "(예: 감자랑 양파로 뭐 해 먹지?)",
+                "answer": "식재료를 포함해서 다시 질문해 주세요! (예: 감자랑 양파로 뭐 해 먹지?)",
                 "source": "no_ingredient",
                 "candidates": [],
             }
 
-        # Step 2: 1차 — 벡터 DB 검색
         print(f"🗄️ [Pipeline] DB 검색 시도 (keywords: {ingredient_keywords})...")
         retrieved = search_similar_recipes(ingredient_keywords)
         source = "db"
@@ -231,10 +225,8 @@ class RecipeAgent:
         if retrieved:
             print(f"✅ [Pipeline] DB에서 {len(retrieved)}개의 레시피를 찾았습니다.")
         else:
-            print("❌ [Pipeline] DB 검색 결과 없음.")
-
-        # Step 3: 2차 — 웹 fallback
-        if not retrieved:
+            print("❌ [Pipeline] DB 검색 결과 없음. Web Fallback을 시작합니다.")
+            # 일반 웹 검색
             retrieved = self._fallback_web_search(ingredient_keywords)
             if retrieved:
                 source = "web"
