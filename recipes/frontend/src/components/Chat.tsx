@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, type KeyboardEvent } from 'react';
 import type { ChatMessage } from '@/types';
 import MessageBubble from './MessageBubble';
 

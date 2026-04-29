@@ -73,7 +73,7 @@ export default function FridgePage() {
 
     try {
       const data = await postChat({
-        question: combinedQuestion,
+        question: finalQuestion,
         allergies: preferences.allergies || '없음',
         difficulty: preferences.difficulty || '초보',
         cooking_time: preferences.cooking_time || '20분',
