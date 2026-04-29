@@ -93,6 +93,8 @@ class SeasonalRecipeCurator:
             f"---\n"
             f"더 자세한 사진과 설명은 아래 블로그 링크에서 확인하실 수 있어요! 👇"
         )
+        
+        print(f"\n✨ [Seasonal Curator] 최종 답변:\n{final_answer}\n")
 
         candidates = [{
             "title": f"[제철 레시피] {clean_html(best_item['title'])}",

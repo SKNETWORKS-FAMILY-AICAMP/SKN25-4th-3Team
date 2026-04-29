@@ -48,8 +48,7 @@ export default function FridgePage() {
     } else {
       // 2. 입력창이 비어있는 경우: 버튼별 특수 알고리즘 적용
       if (question.includes('제철')) {
-        const month = new Date().getMonth() + 1;
-        finalQuestion = `${month}월 제철 재료 레시피 추천해줘`;
+        finalQuestion = `제철 재료 추천해줘`;
       } else if (question.includes('다이어트')) {
         finalQuestion = `다이어트 레시피 추천해줘`;
       }

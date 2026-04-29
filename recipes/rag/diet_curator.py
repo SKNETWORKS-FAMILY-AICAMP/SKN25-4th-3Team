@@ -66,7 +66,9 @@ class DietRecipeCurator:
         chain = ChatPromptTemplate.from_template(INTENT_ANALYSIS_PROMPT) | self.llm | self.parser
         try:
             res_text = chain.invoke({"question": question})
-            return json.loads(res_text)
+            analysis = json.loads(res_text)
+            print(f"  [Diet Curator] 의도 분석 결과: {analysis}")
+            return analysis
         except:
             return {"is_diet_intent": False, "ingredients": ""}
 

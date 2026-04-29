@@ -33,9 +33,12 @@ def search_naver_blogs(query: str, display: int = 5, sort_type: str = "sim") -> 
     params = {"query": query, "display": display, "sort": sort_type}
 
     try:
+        print(f"  [Naver API] 🔍 '{query}' 검색 중 (sort={sort_type})...")
         response = requests.get(url, headers=headers, params=params, timeout=5)
         response.raise_for_status()
-        return response.json().get("items", [])
+        items = response.json().get("items", [])
+        print(f"  [Naver API] ✅ {len(items)}개의 결과 발견.")
+        return items
     except Exception as e:
         print(f"  [WARN] 네이버 블로그 검색 API 호출 실패: {e}")
         return []
