@@ -752,3 +752,216 @@ html, body {
 
   .auth-card { padding: 28px 22px 22px; }
 }
+
+/* =============================================================
+   로그인/회원가입 팝업 모달 (AuthModal)
+   챗봇 오렌지 컬러 테마 기반
+   ============================================================= */
+
+/* 오버레이 */
+.am-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 15, 5, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 20px;
+  animation: am-fade-in 0.2s ease;
+}
+@keyframes am-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 모달 카드 */
+.am-card {
+  width: 100%;
+  max-width: 400px;
+  background: #fffaf5;
+  border-radius: 24px;
+  box-shadow: 0 12px 40px rgba(234, 88, 12, 0.18), 0 2px 8px rgba(0,0,0,0.12);
+  overflow: hidden;
+  animation: am-slide-up 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+@keyframes am-slide-up {
+  from { transform: translateY(28px) scale(0.97); opacity: 0; }
+  to   { transform: translateY(0) scale(1);       opacity: 1; }
+}
+
+/* 헤더 배너 */
+.am-header {
+  background: linear-gradient(135deg, #EA580C 0%, #f97316 100%);
+  padding: 22px 28px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.am-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+.am-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+/* 탭 */
+.am-tabs {
+  display: flex;
+  border-bottom: 2px solid #f0ddd0;
+  background: #fff8f2;
+}
+.am-tab {
+  flex: 1;
+  padding: 14px 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: 'Noto Sans KR', sans-serif;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #b07050;
+  position: relative;
+  transition: color 0.15s;
+}
+.am-tab.active {
+  color: #EA580C;
+}
+.am-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 10%;
+  width: 80%;
+  height: 2px;
+  background: #EA580C;
+  border-radius: 2px;
+}
+.am-tab:hover:not(.active) {
+  color: #9a4a10;
+  background: #fff3ec;
+}
+
+/* 폼 */
+.am-form {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px 16px;
+  gap: 0;
+}
+.am-form label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9a4a10;
+  margin-bottom: 5px;
+  margin-top: 12px;
+  letter-spacing: 0.03em;
+}
+.am-form label:first-of-type { margin-top: 0; }
+
+.am-form input {
+  border: 1.5px solid #f0d0b0;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-family: 'Noto Sans KR', sans-serif;
+  background: #fff;
+  outline: none;
+  color: #3d1c08;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.am-form input:focus {
+  border-color: #EA580C;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
+}
+.am-form input::placeholder {
+  color: #d4b8a8;
+  font-size: 13px;
+}
+
+/* 오류 메시지 */
+.am-err {
+  background: #fff0f0;
+  border: 1px solid #f0c0c0;
+  color: #c04040;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+/* 로그인/가입 제출 버튼 */
+.am-submit-btn {
+  margin-top: 18px;
+  background: #EA580C;
+  color: #fff;
+  border: none;
+  border-radius: 22px;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  box-shadow: 0 3px 10px rgba(234, 88, 12, 0.25);
+}
+.am-submit-btn:hover { background: #d24d0a; }
+.am-submit-btn:active { transform: scale(0.98); }
+.am-submit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 구분선 */
+.am-divider {
+  display: flex;
+  align-items: center;
+  margin: 0 24px;
+  color: #d4b8a8;
+  font-size: 12px;
+  gap: 10px;
+}
+.am-divider::before,
+.am-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #f0ddd0;
+}
+
+/* 비회원 버튼 */
+.am-guest-btn {
+  display: block;
+  width: calc(100% - 48px);
+  margin: 14px 24px 22px;
+  background: #fff;
+  border: 2px solid #f0d0b0;
+  border-radius: 22px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Noto Sans KR', sans-serif;
+  color: #9a4a10;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.am-guest-btn:hover {
+  background: #fff3ec;
+  border-color: #EA580C;
+  color: #EA580C;
+}
+
+/* 모바일 대응 */
+@media (max-width: 480px) {
+  .am-card { border-radius: 18px; }
+  .am-header { padding: 18px 20px 14px; }
+  .am-form { padding: 16px 18px 12px; }
+  .am-divider { margin: 0 18px; }
+  .am-guest-btn { width: calc(100% - 36px); margin: 12px 18px 18px; }
+}

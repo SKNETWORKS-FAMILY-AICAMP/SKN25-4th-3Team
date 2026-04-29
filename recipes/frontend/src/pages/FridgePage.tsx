@@ -8,12 +8,13 @@ import Chat from '@/components/Chat';
 import FAQButtons from '@/components/FAQButtons';
 import SaucePanel from '@/components/SaucePanel';
 import Toast from '@/components/Toast';
+import AuthModal from '@/components/AuthModal';
 import { useAuth } from '@/context/AuthContext';
 import { postChat, postPrefs, postReset } from '@/api/recipes';
 import type { ChatMessage, Preferences } from '@/types';
 
 export default function FridgePage() {
-  const { initialMessages, preferences: initialPrefs, setPreferences: persistCtxPrefs } = useAuth();
+  const { initialMessages, preferences: initialPrefs, setPreferences: persistCtxPrefs, auth } = useAuth();
 
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [preferences, setLocalPrefs] = useState<Preferences>(initialPrefs);
@@ -21,6 +22,7 @@ export default function FridgePage() {
   const [isSending, setIsSending] = useState(false);
   const [fridgeOpen, setFridgeOpen] = useState(false);
   const [sauceOpen, setSauceOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastToken, setToastToken] = useState(0);
@@ -147,12 +149,33 @@ export default function FridgePage() {
     ]);
   };
 
+  // 냉장고 클릭 핸들러 — 비로그인 시 모달 먼저 표시
+  const handleFridgeOpen = () => {
+    if (auth.isAuthenticated) {
+      setFridgeOpen(true);
+    } else {
+      setAuthModalOpen(true);
+    }
+  };
+
+  // 로그인/가입 성공 → 모달 닫고 냉장고 열기
+  const handleAuthSuccess = () => {
+    setAuthModalOpen(false);
+    setFridgeOpen(true);
+  };
+
+  // 비회원 선택 → 모달 닫고 냉장고 열기
+  const handleGuest = () => {
+    setAuthModalOpen(false);
+    setFridgeOpen(true);
+  };
+
   return (
     <div className="page-wrap">
       <div className="scene">
         <Fridge
           open={fridgeOpen}
-          onOpen={() => setFridgeOpen(true)}
+          onOpen={handleFridgeOpen}
           onClose={() => setFridgeOpen(false)}
           innerSlot={
             <Chat
@@ -186,12 +209,24 @@ export default function FridgePage() {
           <button
             className="big-btn"
             type="button"
-            onClick={() => setFridgeOpen((v) => !v)}
+            onClick={() => {
+              if (fridgeOpen) {
+                setFridgeOpen(false);
+              } else {
+                handleFridgeOpen();
+              }
+            }}
           >
             {fridgeOpen ? '🚪 냉장고 닫기' : '🧊 냉털 AI 시작하기'}
           </button>
         </div>
       </div>
+
+      <AuthModal
+        open={authModalOpen}
+        onClose={handleGuest}
+        onLoginSuccess={handleAuthSuccess}
+      />
 
       <Toast message={toastMsg} token={toastToken} />
     </div>
