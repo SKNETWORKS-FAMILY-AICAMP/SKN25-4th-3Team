@@ -180,7 +180,15 @@ graph TD
 • **멀티모달 답변**: 조리 과정 이미지 생성 및 실제 조리 영상 연동 인터페이스.
 
 # 8. 수행 결과 (v2.0)
-*(여기에 4차 프로젝트 작동 스크린샷이나 시연 영상을 삽입하세요)*
+• **로그인 및 마이페이지**
+https://github.com/user-attachments/assets/b73d5b20-a657-4f42-a32b-01dffe8c4a08
+
+• **다이어트 레시피**
+https://github.com/user-attachments/assets/e6e3fac2-043d-46d1-bcbf-28fc288a13d4
+
+• **제철음식**
+https://github.com/user-attachments/assets/6ea1aed9-e0e4-499c-a222-fd26c4534c05
+
 
 # 9. EC2 Docker Compose 배포
 이 프로젝트는 EC2에서 Nginx를 단일 외부 진입점으로 사용하도록 구성되어 있습니다.
@@ -228,3 +236,13 @@ docker compose up -d --build
 - React 앱: `http://<EC2_PUBLIC_HOST>/`
 - Django Admin: `http://<EC2_PUBLIC_HOST>/admin/`
 - Airflow: `http://<EC2_PUBLIC_HOST>/airflow/`
+
+# 10. 필수 산출물 링크
+• **요구사항 정의서**
+https://docs.google.com/spreadsheets/d/1uu0anmsq6F6RSQ9iB5ziSdd4MRvfiHzi/edit?usp=sharing&ouid=107979902375703980617&rtpof=true&sd=true
+
+• **화면설계서**
+
+
+• **테스트 계획 및 결과보고서**
+https://docs.google.com/spreadsheets/d/1WmUIsJ4giVE_YS5HYwpVqZ6UPcECWIBT/edit?usp=sharing&ouid=107979902375703980617&rtpof=true&sd=true
