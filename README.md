@@ -242,7 +242,7 @@ docker compose up -d --build
 https://docs.google.com/spreadsheets/d/1uu0anmsq6F6RSQ9iB5ziSdd4MRvfiHzi/edit?usp=sharing&ouid=107979902375703980617&rtpof=true&sd=true
 
 • **화면설계서**
-
+https://docs.google.com/presentation/d/1zAAaQ1yZlcrdn3JRU6-GsIGr1x5mmV7n/edit?usp=sharing&ouid=107979902375703980617&rtpof=true&sd=true
 
 • **테스트 계획 및 결과보고서**
 https://docs.google.com/spreadsheets/d/1WmUIsJ4giVE_YS5HYwpVqZ6UPcECWIBT/edit?usp=sharing&ouid=107979902375703980617&rtpof=true&sd=true
